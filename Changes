@@ -1,10 +1,14 @@
 Revision history for Perl extension Tk::Date.
 
+0.36
+	- just another -allarrows bugfix
+	- checks for valid mdays while inc/decrementing
+
 0.35
 	- workaround bug in POSIX::strftime
 
 0.34
-	- corrected probems with -(pre)command and -allarrows
+	- corrected problems with -(pre)command and -allarrows
 
 0.33
 	- new predefined choices tokens: beginning_of_month and end_of_month

@@ -1,7 +1,7 @@
 # -*- perl -*-
 
 #
-# $Id: Date.pm,v 1.48 2001/04/21 08:55:54 eserte Exp $
+# $Id: Date.pm,v 1.49 2001/04/30 17:33:00 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 1997, 1998, 1999, 2000 Slaven Rezic. All rights reserved.
@@ -22,7 +22,7 @@ use vars qw($VERSION @ISA $has_numentryplain $has_numentry
 @ISA = qw(Tk::Frame);
 Construct Tk::Widget 'Date';
 
-$VERSION = '0.35';
+$VERSION = '0.36';
 
 @monlen = (undef, 31, undef, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31);
  # XXX DST?
@@ -750,6 +750,12 @@ sub set_date {
 	    $value = 1;
 	    $w->set_date('y', $w->get_date('y', 1)+1);
 	}
+	# maybe correct day
+	my $d = $w->get_date('d', 1);
+	my $max_d = _monlen($value, $w->get_date('y', 1));
+	if ($d > $max_d) {
+	    $w->set_date('d', $max_d);
+	}
     } elsif ($key eq 'H') {
 	if ($value < 0) {
 	    $value = 23;
@@ -757,6 +763,13 @@ sub set_date {
 	} elsif ($value > 23) {
 	    $value = 0;
 	    $w->set_date('d', $w->get_date('d', 1)+1);
+	}
+    } elsif ($key eq 'y') {
+	# maybe correct day for leap years
+	my $d = $w->get_date('d', 1);
+	my $max_d = _monlen($w->get_date('m', 1), $value);
+	if ($d > $max_d) {
+	    $w->set_date('d', $max_d);
 	}
     } elsif ($key eq 'M') {
 	if ($value < 0) {
@@ -927,7 +940,8 @@ sub firebutton_command {
     if ($w->{Configure}{-precommand}) {
 	return unless $w->Callback(-precommand => $w, $type, $inc);
     }
-    $w->inc_date($cw, $inc);
+    my $sub_w = $w->{Sub}{$type};
+    $w->inc_date($cw, $inc, $sub_w);
     if ($w->{Configure}{-command}) {
 	$w->Callback(-command => $w, $type, $inc);
     }
@@ -1321,7 +1335,9 @@ works without this distribution, only lacking the arrow buttons.
 
 If the POSIX module is available, localised weekday and month names
 will be used instead of English names. Otherwise you have to use the
--weekday and -monthnames options.
+-weekday and -monthnames options. The POSIX strftime function does not
+work correctly before version 1.03 (that is, before 5.6.0), so this
+feature is disabled for older perl versions.
 
 =head1 BUGS/TODO
 
