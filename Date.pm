@@ -1,7 +1,7 @@
 # -*- perl -*-
 
 #
-# $Id: Date.pm,v 1.33 1999/03/20 12:19:56 eserte Exp $
+# $Id: Date.pm,v 1.34 1999/04/14 18:30:01 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 1997, 1998, 1999 Slaven Rezic. All rights reserved.
@@ -19,7 +19,7 @@ use vars qw($VERSION @ISA $has_numentryplain);
 @ISA = qw(Tk::Frame);
 Construct Tk::Widget 'Date';
 
-$VERSION = '0.27';
+$VERSION = '0.28';
 
 my @monlen = (undef, 31, undef, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31);
  # XXX DST?

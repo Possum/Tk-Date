@@ -115,7 +115,8 @@ if ($@) {
 			     -value => 'now',
 			    )->pack;
 	$now1 = POSIX::mktime(@{$var3}{qw(S M H d)},
-			      $var3->{'m'}-1, $var3->{'y'}-1900
+			      $var3->{'m'}-1, $var3->{'y'}-1900,
+			      0, 0, -1
 			     );
 	$now2 = time;
 	$delta = abs($now2-$now1);

@@ -1,5 +1,8 @@
 Revision history for Perl extension Tk::Date.
 
+0.28
+	- fixed test no. 6 (mktime needs -1 for is_dst field)
+
 0.27
 	- compatibility changes for Tk800.013
 	- more -choices: (yesterday|today|tomorrow)_midnight
