@@ -1,7 +1,7 @@
 # -*- perl -*-
 
 #
-# $Id: Date.pm,v 1.52 2001/08/08 21:19:32 eserte Exp $
+# $Id: Date.pm,v 1.53 2001/11/21 19:19:36 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 1997, 1998, 1999, 2000, 2001 Slaven Rezic. All rights reserved.
@@ -22,7 +22,7 @@ use vars qw($VERSION @ISA $has_numentryplain $has_numentry
 @ISA = qw(Tk::Frame);
 Construct Tk::Widget 'Date';
 
-$VERSION = '0.38';
+$VERSION = '0.39';
 
 @monlen = (undef, 31, undef, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31);
  # XXX DST?
@@ -748,21 +748,23 @@ sub get_date {
 }
 
 sub set_date {
-    my($w, $key, $value) = @_;
+    my($w, $key, $value, %args) = @_;
 
     $value = 0 if !defined $value; # XXX ???
 
     if ($key eq 'd') {
-	if ($value < 1) {
-	    my $m = $w->set_date('m', $w->get_date('m', 1)-1);
-	    $value = _monlen($m, $w->get_date('y', 1));
-	} else {
-	    my $m = $w->get_date('m', 1);
-	    if (defined $m and $m ne '') {
-		my $y = $w->get_date('y', 1);
-		if (defined $y and $y ne '' and $value > _monlen($m, $y)) {
-		    $value = 1;
-		    $w->set_date('m', $m+1);
+	if (!$args{-correcting}) {
+	    if ($value < 1) {
+		my $m = $w->set_date('m', $w->get_date('m', 1)-1);
+		$value = _monlen($m, $w->get_date('y', 1));
+	    } else {
+		my $m = $w->get_date('m', 1);
+		if (defined $m and $m ne '') {
+		    my $y = $w->get_date('y', 1);
+		    if (defined $y and $y ne '' and $value > _monlen($m, $y)) {
+			$value = 1;
+			$w->set_date('m', $m+1);
+		    }
 		}
 	    }
 	}
@@ -778,7 +780,7 @@ sub set_date {
 	my $d = $w->get_date('d', 1);
 	my $max_d = _monlen($value, $w->get_date('y', 1));
 	if ($d > $max_d) {
-	    $w->set_date('d', $max_d);
+	    $w->set_date('d', $max_d, -correcting => 1);
 	}
     } elsif ($key eq 'H') {
 	if ($value < 0) {
@@ -929,7 +931,7 @@ sub inc_date {
 	    # search the active numentry widget
 	    foreach (@{$fw->{Sub}}) {
 		if ($current_nw eq $dw->{Sub}{$_} or
-		    $current_nw->parent eq $dw->{Sub}{$_}
+		    ($current_nw->parent && $current_nw->parent eq $dw->{Sub}{$_})
 		   ) {
 		    $dw->set_date($_, $dw->get_date($_, 1)+$inc);
 		    return;

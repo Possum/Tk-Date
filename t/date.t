@@ -25,7 +25,7 @@ use Tk::Date;
 use strict;
 use vars qw($loaded $SLOW);
 
-BEGIN { $| = 1; $^W = 1; print "1..37\n"; }
+BEGIN { $| = 1; $^W = 1; print "1..39\n"; }
 END {print "not ok 1\n" unless $loaded;}
 $loaded = 1;
 my $ok = 1;
@@ -384,6 +384,22 @@ if (scalar @$weekdays != 7) { print "not " } print "ok " . ($ok++) . "\n";
 
 my $monthnames = Tk::Date::_get_month_names;
 if (scalar @$monthnames != 12) { print "not " } print "ok " . ($ok++) . "\n";
+
+{
+    # test invalid date handling
+    my $d = $top->Date(-value => 'now');
+    if (!$d->isa('Tk::Date')) {
+	print "not ";
+    }
+    print "ok " . ($ok++) . "\n";
+    $d->{Sub}{'d'}->delete(0,"end");
+    $d->{Sub}{'d'}->insert("end",39);
+    $d->set_date('d', 40);
+    if ($d->get('%d') ne '01') {
+	print "not ";
+    }
+    print "ok " . ($ok++) . "\n";
+}
 
 sub center2 {
     my($wid) = @_;

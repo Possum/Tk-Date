@@ -1,5 +1,9 @@
 Revision history for Perl extension Tk::Date.
 
+0.39
+	- fixed a bug causing an endless loop if non-valid dates are
+	  entered
+
 0.38
 	- new -state option
 
