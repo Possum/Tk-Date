@@ -1,7 +1,7 @@
 # -*- perl -*-
 
 #
-# $Id: Date.pm,v 1.53 2001/11/21 19:19:36 eserte Exp $
+# $Id: Date.pm,v 1.54 2002/01/10 20:52:22 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 1997, 1998, 1999, 2000, 2001 Slaven Rezic. All rights reserved.
@@ -22,7 +22,7 @@ use vars qw($VERSION @ISA $has_numentryplain $has_numentry
 @ISA = qw(Tk::Frame);
 Construct Tk::Widget 'Date';
 
-$VERSION = '0.39';
+$VERSION = '0.40';
 
 @monlen = (undef, 31, undef, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31);
  # XXX DST?
@@ -749,7 +749,6 @@ sub get_date {
 
 sub set_date {
     my($w, $key, $value, %args) = @_;
-
     $value = 0 if !defined $value; # XXX ???
 
     if ($key eq 'd') {
@@ -778,9 +777,11 @@ sub set_date {
 	}
 	# maybe correct day
 	my $d = $w->get_date('d', 1);
-	my $max_d = _monlen($value, $w->get_date('y', 1));
-	if ($d > $max_d) {
-	    $w->set_date('d', $max_d, -correcting => 1);
+	if (defined $d && $d ne '') {
+	    my $max_d = _monlen($value, $w->get_date('y', 1));
+	    if ($d > $max_d) {
+		$w->set_date('d', $max_d, -correcting => 1);
+  	    }
 	}
     } elsif ($key eq 'H') {
 	if ($value < 0) {
@@ -793,9 +794,11 @@ sub set_date {
     } elsif ($key eq 'y') {
 	# maybe correct day for leap years
 	my $d = $w->get_date('d', 1);
-	my $max_d = _monlen($w->get_date('m', 1), $value);
-	if ($d > $max_d) {
-	    $w->set_date('d', $max_d);
+	if (defined $d and $d ne '') {
+	    my $max_d = _monlen($w->get_date('m', 1), $value);
+	    if ($d > $max_d) {
+		$w->set_date('d', $max_d);
+ 	    }
 	}
     } elsif ($key eq 'M') {
 	if ($value < 0) {

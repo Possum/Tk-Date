@@ -8,3 +8,4 @@ Makefile.PL
 README
 t/date.t
 t/noprereq.t
+t/nowarn.t
