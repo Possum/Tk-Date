@@ -1,7 +1,7 @@
 # -*- perl -*-
 
 #
-# $Id: Date.pm,v 1.47 2001/02/23 23:03:50 eserte Exp $
+# $Id: Date.pm,v 1.48 2001/04/21 08:55:54 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 1997, 1998, 1999, 2000 Slaven Rezic. All rights reserved.
@@ -22,7 +22,7 @@ use vars qw($VERSION @ISA $has_numentryplain $has_numentry
 @ISA = qw(Tk::Frame);
 Construct Tk::Widget 'Date';
 
-$VERSION = '0.34';
+$VERSION = '0.35';
 
 @monlen = (undef, 31, undef, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31);
  # XXX DST?
@@ -830,6 +830,7 @@ sub _get_week_days {
     return $weekdays if $weekdays;
     eval {
 	require POSIX;
+	POSIX->VERSION(1.03);
 	# prefer POSIX because of localized weekday names
 	my $_weekdays = [];
 	foreach my $day_i (6 .. 12) { # 2000-08-06 till 2000-08-12
@@ -841,6 +842,7 @@ sub _get_week_days {
 	}
 	$weekdays = $_weekdays;
     };
+    warn $@ if $@;
     if (!$weekdays) {
 	$weekdays = $en_weekdays;
     }

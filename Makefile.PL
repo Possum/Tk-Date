@@ -6,8 +6,7 @@ WriteMakefile
   (
    'NAME'	  => 'Tk::Date',
    'VERSION_FROM' => 'Date.pm', # finds $VERSION
-   'dist'      => {'COMPRESS'=>'gzip -9f', 'SUFFIX' => '.gz',
-                   'POSTOP'=>'-$(CHMOD) 644 $(DISTVNAME).tar$(SUFFIX)'},
+   'dist' => {'POSTOP'=>'-$(CHMOD) 644 $(DISTVNAME).tar$(SUFFIX)'},
    'PM' => {'Date.pm'   => '$(INST_LIB)/Tk/Date.pm',
             'demos/date.pl' => ($] >= 5.005
 				? '$(INST_ARCHLIB)'
