@@ -25,9 +25,9 @@ sub date {
 
     my $hbits = pack("b8"x5,
 		     ".....11.",
-		     "...1111.",
-		     ".111111.",
-		     "...1111.",
+		     "...11.1.",
+		     ".11...1.",
+		     "...11.1.",
 		     ".....11.");
     eval {
 	$top->DefineBitmap($HDECBITMAP => 8,5, $hbits);
@@ -94,6 +94,16 @@ sub date {
 		  -choices => ['today', 'reset'],
 		 );
 
+    single_widget('All arrows',
+		  -value => 'now',
+		  -allarrows => 1,
+		 );
+
+    single_widget('Horizontal arrows',
+		  -value => 'now',
+		  -orient => "horiz",
+		 );
+
     single_widget('With weekday',
 		  -datefmt => "%12A, %2d.%2m.%4y",
 		  -fields => 'date',
@@ -125,6 +135,13 @@ sub date {
        -innerbg => 'white',
        -innerfg => 'red',
        -orient => 'horiz',
+       -weekdays => ['nedjelja', 'ponedjeljak', 'utorak', 'srijeda',
+		     'cetvrtak', 'petak', 'subota'],
+       -monthnames =>
+       ['sijecanj', 'veljaca', 'ozujak', 'travanj',
+	'svibanj', 'lipanj', 'srpanj', 'kolovoz', 'rujan',
+	'listopad', 'studeni', 'prosinac'],
+       -monthmenu => 1,
        -incbitmap => $HINCBITMAP,
        -decbitmap => $HDECBITMAP,
        -command => sub {

@@ -15,9 +15,10 @@ WriteMakefile
 	   },
    'MAN3PODS' => {'Date.pm'   => '$(INST_MAN3DIR)/Tk::Date.$(MAN3EXT)',
 		 },
-   'PREREQ_PM' => {'Tk' => 402.002,
+   'PREREQ_PM' => {'Tk'                => 402.002,
 		   'Tk::NumEntryPlain' => 0.02,
-		   'Tk::FireButton' => 0.01,
+		   'Tk::NumEntry'      => 1.08,
+		   'Tk::FireButton'    => 0.05,
 		  },
 );
 

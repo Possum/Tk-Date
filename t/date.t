@@ -25,7 +25,7 @@ use Tk::Date;
 use strict;
 use vars qw($loaded $SLOW);
 
-BEGIN { $| = 1; $^W = 1; print "1..25\n"; }
+BEGIN { $| = 1; $^W = 1; print "1..30\n"; }
 END {print "not ok 1\n" unless $loaded;}
 $loaded = 1;
 my $ok = 1;
@@ -219,8 +219,8 @@ print (($nowstring ne $var4 ? "not " : "" . "ok ") . $ok++ . "\n");
     # XXX eventGenerate geht nicht mit Menubutton (?)
     $dw_time->Subwidget('chooser')->eventGenerate2('<ButtonPress-1>', '-x' => $x, '-y' => $y);
     $dw_time->update;
-warn $dw_time->get("%s");
-warn Tk::Date::_begin_of_day(time());
+#warn $dw_time->get("%s");
+#warn Tk::Date::_begin_of_day(time());
     if ($dw_time->get("%s") != Tk::Date::_begin_of_day(time())) {
 	print "not ";
     }
@@ -304,6 +304,39 @@ warn Tk::Date::_begin_of_day(time());
     print "ok " . ($ok++) . "\n";
 
 }
+
+{
+    # test -weekdays, -monthnames and -monthmenu
+    my $d = $top->Date(-weekdays => 
+		       ['nedjelja', 'ponedjeljak', 'utorak', 'srijeda',
+			'cetvrtak', 'petak', 'subota'],
+		       -monthnames =>
+		       ['sijecanj', 'veljaca', 'ozujak', 'travanj',
+			'svibanj', 'lipanj', 'srpanj', 'kolovoz', 'rujan',
+			'listopad', 'studeni', 'prosinac'],
+		       -monthmenu => 1,
+		       );
+    if (!$d->isa('Tk::Date')) {
+	print "not ";
+    }
+    print "ok " . ($ok++) . "\n";
+
+    if ($d->{Configure}{-weekdays}->[0] ne 'nedjelja') {
+	print "not ";
+    }
+    print "ok " . ($ok++) . "\n";
+
+    if ($d->{Configure}{-monthnames}->[0] ne 'sijecanj') {
+	print "not ";
+    }
+    print "ok " . ($ok++) . "\n";
+}
+
+my $weekdays = Tk::Date::_get_week_days;
+if (scalar @$weekdays != 7) { print "not " } print "ok " . ($ok++) . "\n";
+
+my $monthnames = Tk::Date::_get_month_names;
+if (scalar @$monthnames != 12) { print "not " } print "ok " . ($ok++) . "\n";
 
 sub center2 {
     my($wid) = @_;

@@ -1,5 +1,11 @@
 Revision history for Perl extension Tk::Date.
 
+0.33
+	- new predefined choices tokens: beginning_of_month and end_of_month
+	- new options: -monthnames, -weekdays, -monthmenu, -allarrows
+	- bug and pod fixes
+	- new NOTES section in pod
+
 0.30
 	- pod additions for -datefmt and -timefmt
 

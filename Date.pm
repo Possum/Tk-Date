@@ -1,10 +1,10 @@
 # -*- perl -*-
 
 #
-# $Id: Date.pm,v 1.37 2000/06/13 21:53:49 eserte Exp $
+# $Id: Date.pm,v 1.44 2000/09/02 23:22:17 eserte Exp $
 # Author: Slaven Rezic
 #
-# Copyright (C) 1997, 1998, 1999 Slaven Rezic. All rights reserved.
+# Copyright (C) 1997, 1998, 1999, 2000 Slaven Rezic. All rights reserved.
 # This package is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 #
@@ -15,15 +15,18 @@
 package Tk::Date;
 use Time::Local qw(timelocal);
 use strict;
-use vars qw($VERSION @ISA $has_numentryplain);
+use vars qw($VERSION @ISA $has_numentryplain $has_numentry
+	    @monlen %choice $en_weekdays $en_monthnames
+	    $weekdays $monthnames
+	   );
 @ISA = qw(Tk::Frame);
 Construct Tk::Widget 'Date';
 
-$VERSION = '0.30';
+$VERSION = '0.33';
 
-my @monlen = (undef, 31, undef, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31);
+@monlen = (undef, 31, undef, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31);
  # XXX DST?
-my %choice =
+%choice =
   ('today'              => ['Today',     sub { time() }],
    'now'                => ['Now',       sub { time() }],
    'yesterday'          => ['Yesterday', sub { time()-86400 } ],
@@ -33,12 +36,32 @@ my %choice =
    'yesterday_midnight' => ['Yesterday', sub { _begin_of_day(time()-86400) } ],
    'tomorrow_midnight'  => ['Tomorrow',  sub { _begin_of_day(time()+86400) } ],
 
+   'beginning_of_month' => ['Beginning of month' =>
+			    sub { my(@l) = localtime;
+				  $l[3] = 1;
+				  _begin_of_day(timelocal(@l));
+			      }],
+   'end_of_month'       => ['End of month' =>
+			    sub { my(@l) = localtime;
+				  foreach (31, 30, 29, 28) {
+				      $l[3] = $_;
+				      my $t = timelocal(@l);
+				      my(@l2) = localtime $t;
+				      return _end_of_day($t)
+					  if ($l[4] == $l2[4]);
+				  }
+				  die "Can't get end of month";
+			      }],
+
    'reset'              => ['Reset',     'RESET'],
   );
 
 $has_numentryplain = 0;
-my @wkday = ('Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday',
-	     'Friday', 'Saturday');
+$has_numentry      = 0;
+
+$en_weekdays = [qw(Sunday Monday Tuesday Wednesday Thursday Friday Saturday)];
+$en_monthnames = [qw(January February March April May June
+		     July August September October November December)];
 
 ######################################################################
 package Tk::Date::NumEntryPlain;
@@ -48,21 +71,50 @@ eval {
     @ISA = qw(Tk::NumEntryPlain);
     Construct Tk::Widget 'DateNumEntryPlain';
 
+    sub Populate {
+	my($w, $args) = @_;
+	$w->SUPER::Populate($args);
+	$w->ConfigSpecs
+	    (-frameparent =>    [qw/PASSIVE/],
+	     -numentryparent => [qw/PASSIVE/, undef, undef, $w],
+	    );
+    }
     sub value { }
-
     sub incdec {
-	my($e, $inc, $i) = @_;
+	my($e, $inc) = @_;
 	my $val = $e->get;
-
 	# XXX $inc == 0 -> range check
 	if (defined $inc and $inc != 0) {
-	    my $dw = $e->parent->parent; # XXX dangerous
-	    my $fw = $e->parent;
-	    $dw->inc_date($fw, $inc);
+	    my $fw = $e->cget(-frameparent);
+	    my $date_w = $fw->parent;
+	    $date_w->inc_date($fw, $inc, $e->cget(-numentryparent));
 	}
     }
 
     $Tk::Date::has_numentryplain++;
+};
+
+######################################################################
+package Tk::Date::NumEntry;
+use vars qw(@ISA);
+eval {
+    require Tk::NumEntryPlain;
+    require Tk::NumEntry;
+    Tk::NumEntry->VERSION(1.08);
+    @ISA = qw(Tk::NumEntry);
+    Construct Tk::Widget 'DateNumEntry';
+
+    sub NumEntryPlainWidget { "DateNumEntryPlain" }
+
+    sub Populate {
+	my($w, $args) = @_;
+	$w->SUPER::Populate($args);
+	$w->Subwidget("entry")->configure
+	    (-frameparent    => delete $args->{'frameparent'},
+	     -numentryparent => $w);
+    }
+
+    $Tk::Date::has_numentry++;
 };
 
 ######################################################################
@@ -79,13 +131,20 @@ sub Populate {
 	$has_firebutton = 1;
     };
 
+    # and now the construction-time options
+
+    # -input
     my $input = 1;
     if (exists $args->{-editable}) { $input  = delete $args->{-editable} }
+
+    # -fields
     my $fields = 'both';
     if (exists $args->{-fields})   { $fields = delete $args->{-fields} }
     if ($fields !~ /^(date|time|both)$/) {
 	die "Invalid option for -fields: must be date, time or both";
     }
+
+    # -choices
     my $choices        = delete $args->{-choices};
     if ($choices) {
 	if (ref $choices ne 'ARRAY') {
@@ -94,22 +153,62 @@ sub Populate {
     } else {
 	$choices = [];
     }
+
+    # -allarrows
+    my $allarrows      = delete $args->{-allarrows};
+    if (!$has_numentry) { $allarrows = 0 }
+
+    # -monthmenu
+    $w->{Configure}{-monthmenu} = delete $args->{-monthmenu};
+
+    # -from and -to (not yet implemented)
     my $from           = delete $args->{-from}; # XXX TODO
     my $to             = delete $args->{-to};   # XXX TODO
+
+    # -varfmt
     $w->{Configure}{-varfmt}  = delete $args->{-varfmt} || 'unixtime';
+
+    # -orient
     my $orient         = delete $args->{-orient} || 'v';
     if ($orient !~ /^(v|h)/) {
 	die "Invalid option for -orient: must be horizontal or vertical";
     } else {
 	$orient = $1;
     }
+
+    # -selectlabel
     $w->{Configure}{-selectlabel} = delete $args->{-selectlabel} || 'Select:';
+
+    # -check
     my $check          = delete $args->{-check};
+
+    # -weekdays
+    $w->{Configure}{-weekdays} = delete $args->{-weekdays} 
+                                 || $w->_get_week_days;
+
+    die "-weekdays argument should be a reference to a 7-element array"
+	if (!ref $w->{Configure}{-weekdays} eq 'ARRAY' and
+	    scalar $w->{Configure}{-weekdays} != 7);
+
+    # -monthnames
+    $w->{Configure}{-monthnames} = delete $args->{-monthnames}
+                                   || $w->_get_month_names;
+    die "-monthnames argument should be a reference to a 12-element array"
+	if (!ref $w->{Configure}{-monthnames} eq 'ARRAY' and
+	    scalar $w->{Configure}{-monthnames} != 12);
 
     $w->{IncFireButtons} = [];
     $w->{DecFireButtons} = [];
     $w->{NumEntries}     = [];
 
+    my $DateEntry;
+    if ($allarrows) {
+	$DateEntry = "DateNumEntry";
+    } elsif ($has_numentryplain) {
+	$DateEntry = "DateNumEntryPlain";
+    }
+
+    # Construction of Date field
     if ($fields ne 'time') {
 	my %range = ('d' => [1, 31],
 		     'm' => [1, 12],
@@ -117,6 +216,7 @@ sub Populate {
 	my $dw = $w->Frame->pack(-side => 'left');
 	$w->Advertise(dateframe => $dw);
 	my @datefmt = _fmt_to_array(delete $args->{-datefmt} || "%2d.%2m.%4y");
+
 	foreach (@datefmt) {
 	    if ($_ =~ /^%(\d+)?(.)$/) {
 		my($l, $k) = ($1, $2);
@@ -128,23 +228,41 @@ sub Populate {
 		} else {
 		    $w->{Var}{$k} = undef;
 		    my $dne;
-		    if ($has_numentryplain) {
-			$dne =
-			  $dw->DateNumEntryPlain
-			    (-width => $l,
-			     (exists $range{$k} ?
-			      ((defined $range{$k}->[0]
-				? (-minvalue => $range{$k}->[0]) : ()),
-			       (defined $range{$k}->[1]
-				? (-minvalue => $range{$k}->[1]) : ()),
-			      ) : ()),
-			     # XXX NumEntryPlain ist buggy
+		    if ($k eq 'm' and $w->{Configure}{-monthmenu}) {
+			my $month_i = 1;
+			# XXX an Optionmenu would be more suitable, but
+			# the -textvariable/-variable stuff is still a mess...
+			require Tk::Optionmenu;
+			$dne = $dw->Optionmenu
+			    (-variable => \$w->{Var}{$k},
 			     -textvariable => \$w->{Var}{$k},
+			     ($check
+			      ? (-command => sub { $w->inc_date($dw,0) })
+                              : ()
+                             ),
 			    );
+			$dne->addOptions(map { [$month_i++ => $_ ] }
+					 @{ $w->{Configure}{-monthnames} });
 		    } else {
-			$dne =
-			  $dw->Entry(-width => $l,
-				     -textvariable => \$w->{Var}{$k});
+			if ($has_numentryplain || $has_numentry) {
+			    $dne =
+				$dw->$DateEntry
+				    (-width => $l,
+				     (exists $range{$k} ?
+				      ((defined $range{$k}->[0]
+					? (-minvalue => $range{$k}->[0]) : ()),
+				       (defined $range{$k}->[1]
+					? (-maxvalue => $range{$k}->[1]) : ()),
+				      ) : ()),
+				     # XXX NumEntryPlain ist buggy
+				     -textvariable => \$w->{Var}{$k},
+				     -frameparent => $dw,
+				    );
+			} else {
+			    $dne =
+				$dw->Entry(-width => $l,
+					   -textvariable => \$w->{Var}{$k});
+			}
 		    }
 		    $w->{Sub}{$k} = $dne;
 		    $dne->pack(-side => 'left');
@@ -162,7 +280,7 @@ sub Populate {
 			  )->pack(-side => 'left');
 	    }
 	}
-	if ($input && $has_firebutton) {
+	if ($input && $has_firebutton && !$allarrows) {
 	    my $f = $dw->Frame->pack(-side => 'left');
 	    my($fb1, $fb2);
 	    if ($orient eq 'h') {
@@ -185,10 +303,12 @@ sub Populate {
 	}
     }
 
+    # spacer between Date and Time field
     if ($fields eq 'both') {
 	$w->Label->pack(-side => 'left');
     }
 
+    # Construction of Time field
     if ($fields ne 'date') {
 	my %range = ('H' => [0, 23],
 		     'M' => [0, 59],
@@ -208,16 +328,17 @@ sub Populate {
 		} else {
 		    $w->{Var}{$k} = undef;
 		    my $dne;
-		    if ($has_numentryplain) {
-			$dne = $tw->DateNumEntryPlain
+		    if ($has_numentryplain || $has_numentry) {
+			$dne = $tw->$DateEntry
 			  (-width => $l,
 			   (exists $range{$k} ?
 			    ((defined $range{$k}->[0]
 			      ? (-minvalue => $range{$k}->[0]) : ()),
 			     (defined $range{$k}->[1]
-			      ? (-minvalue => $range{$k}->[1]) : ()),
+			      ? (-maxvalue => $range{$k}->[1]) : ()),
 			    ) : ()),
 			   -textvariable => \$w->{Var}{$k},
+			   -frameparent => $tw,
 			  );
 		    } else {
 			$dne = $tw->Entry(-width => $l,
@@ -239,7 +360,7 @@ sub Populate {
 			  )->pack(-side => 'left');
 	    }
 	}
-	if ($input && $has_firebutton) {
+	if ($input && $has_firebutton && !$allarrows) {
 	    my $f = $tw->Frame->pack(-side => 'left');
 	    my($fb1, $fb2);
 	    if ($orient eq 'h') {
@@ -263,6 +384,7 @@ sub Populate {
 
     }
 
+    # Construction of choices optionmenu button for fixed dates
     if (@$choices) {
 	my($b, $b_menu, $b_sub);
 	my %text2time;
@@ -331,13 +453,24 @@ sub Populate {
 	}
     }
 
+    # Default values for firebutton images.
+    # Distinguish between horizontal and vertical images.
+    my($incbitmap, $decbitmap);
+    if ($orient eq 'v') {
+	($incbitmap, $decbitmap) = ($Tk::FireButton::INCBITMAP,
+				    $Tk::FireButton::DECBITMAP);
+    } else {
+	($incbitmap, $decbitmap) = ($Tk::FireButton::HORIZINCBITMAP,
+				    $Tk::FireButton::HORIZDECBITMAP);
+    }
+
     $w->ConfigSpecs
       (-repeatinterval => ['METHOD', 'repeatInterval', 'RepeatInterval', 50],
        -repeatdelay    => ['METHOD', 'repeatDelay',    'RepeatDelay',   500],
        -decbitmap      => ['METHOD',      'decBitmap',  'DecBitmap',
-			   $Tk::FireButton::DECBITMAP],
+			   $decbitmap],
        -incbitmap      => ['METHOD',      'incBitmap',  'IncBitmap',
-			   $Tk::FireButton::INCBITMAP],
+			   $incbitmap],
        -bell           => ['METHOD', 'bell', 'Bell', undef],
        -background     => ['DESCENDANTS', 'background', 'Background', undef],
        -foreground     => ['DESCENDANTS', 'foreground', 'Foreground', undef],
@@ -548,7 +681,8 @@ sub get_date {
     my($w, $key, $defined) = @_;
     my $sw = $w->{Sub}{$key};
     if (Tk::Exists($sw)) {
-	if ($sw->isa('Tk::Entry')) {
+	if ($sw->isa('Tk::Entry') ||
+	    $sw->isa('Tk::NumEntry')) {
 	    my $r;
 	    if (ref $w->{Var}{$key} eq 'SCALAR') {
 		$r = $ {$w->{Var}{$key}}; # XXX NumEntryPlain ist buggy
@@ -626,7 +760,8 @@ sub set_date {
 	    $sw->configure(-text => $value);
 	} else {
 	    my $v = sprintf("%0".$w->{'len'}{$key}."d", $value);
-	    if ($sw->isa('Tk::Entry')) {
+	    if ($sw->isa('Tk::Entry') ||
+		$sw->isa('Tk::NumEntry')) {
 		$sw->delete(0, 'end');
 		$sw->insert(0, $v);
 	    } elsif ($sw->isa('Tk::Label')) {
@@ -635,22 +770,17 @@ sub set_date {
 	}
     }
 
-    if ($key eq 'd') {
+    if ($key =~ /^[dmy]$/) {
 	my $d = $w->get_date('d', 1);
 	my $m = $w->get_date('m', 1);
 	my $y = $w->get_date('y', 1);
 	if ($d ne '' and $m ne '' and $y ne '') {
-	    my $t = timelocal(0,0,0, $d, $m-1, $y-1900);
-	    if (defined $t) {
-		eval {
-		    require POSIX;
-		};
-		if (!$@) {
-		    # prefer POSIX because of localized weekday names
-		    $w->set_date('A', POSIX::strftime("%A", localtime($t)));
-		} else {
-		    $w->set_date('A', $wkday[(localtime($t))[6]]);
-		}
+	    my $t;
+	    eval {
+		$t = timelocal(0,0,0, $d, $m-1, $y-1900);
+	    };
+	    if (!$@ and defined $t) {
+		$w->set_date('A', $w->{Configure}{-weekdays}->[(localtime($t))[6]]);
 	    }
 	}
     }
@@ -670,6 +800,48 @@ sub _monlen {
     }
 }
 
+sub _get_week_days {
+    return $weekdays if $weekdays;
+    eval {
+	require POSIX;
+	# prefer POSIX because of localized weekday names
+	my $_weekdays = [];
+	foreach my $day_i (6 .. 12) { # 2000-08-06 till 2000-08-12
+	    my $wday = POSIX::strftime("%A", 0,0,0,$day_i,8-1,2000-1900);
+	    if ($wday eq '' || $wday =~ /^\?/) {
+		die "Can't get weekday name from locale";
+	    }
+	    push @$_weekdays, $wday;
+	}
+	$weekdays = $_weekdays;
+    };
+    if (!$weekdays) {
+	$weekdays = $en_weekdays;
+    }
+    $weekdays;
+}
+
+sub _get_month_names {
+    return $monthnames if $monthnames;
+    eval {
+	require POSIX;
+	# prefer POSIX because of localized month names
+	my $_monthnames = [];
+	foreach my $month_i (1 .. 12) {
+	    my $mname = POSIX::strftime("%B", 0,0,0,1,$month_i-1,1970);
+	    if ($mname eq '' || $mname =~ /^\?/) {
+		die "Can't get month name from locale";
+	    }
+	    push @$_monthnames, $mname;
+	}
+	$monthnames = $_monthnames;
+    };
+    if (!$monthnames) {
+	$monthnames = $en_monthnames;
+    }
+    $monthnames;
+}
+
 sub _now {
     my($k) = @_;
     my @now = localtime;
@@ -683,13 +855,18 @@ sub _now {
 }
 
 sub inc_date {
-    my($w, $ww, $inc) = @_;
+    my($dw, $fw, $inc, $current_nw) = @_;
     if ($inc != 0) { # $inc == 0: only check and correct date
-	my $current_focus = $w->focusCurrent;
-	if ($current_focus) {
-	    foreach (@{$ww->{Sub}}) {
-		if ($current_focus eq $w->{Sub}{$_}) {
-		    $w->set_date($_, $w->get_date($_, 1)+$inc);
+	if (!$current_nw) {
+	    $current_nw = $dw->focusCurrent;
+	}
+	if ($current_nw) {
+	    # search the active numentry widget
+	    foreach (@{$fw->{Sub}}) {
+		if ($current_nw eq $dw->{Sub}{$_} or
+		    $current_nw->parent eq $dw->{Sub}{$_}
+		   ) {
+		    $dw->set_date($_, $dw->get_date($_, 1)+$inc);
 		    return;
 		}
 	    }
@@ -697,8 +874,8 @@ sub inc_date {
     }
 
     my @check_order;
-    if (defined $w->{SubWidget}{'dateframe'} and
-	$ww eq $w->{SubWidget}{'dateframe'}) {
+    if (defined $dw->{SubWidget}{'dateframe'} and
+	$fw eq $dw->{SubWidget}{'dateframe'}) {
 	@check_order = qw(d m y);
     } else {
 	@check_order = qw(S M H);
@@ -707,13 +884,13 @@ sub inc_date {
     # search an existing date entry field
     my $entry_field;
     foreach (@check_order) {
-	if (defined $w->{Sub}{$_}) {
+	if (defined $dw->{Sub}{$_}) {
 	    $entry_field = $_;
 	    last;
 	}
     }
     if (defined $entry_field) {
-	$w->set_date($entry_field, $w->get_date($entry_field, 1)+$inc);
+	$dw->set_date($entry_field, $dw->get_date($entry_field, 1)+$inc);
     }
 }
 
@@ -739,6 +916,12 @@ sub _begin_of_day {
     my $s = shift;
     my(@l) = localtime $s;
     timelocal(0,0,0,$l[3],$l[4],$l[5]);
+}
+
+sub _end_of_day {
+    my $s = shift;
+    my(@l) = localtime $s;
+    timelocal(59,59,23,$l[3],$l[4],$l[5]);
 }
 
 ## XXX causes segmentation fault
@@ -901,6 +1084,12 @@ vertical (default) or horizontal.
 
 =over 4
 
+=item -allarrows
+
+If true then all entry fields will obtain arrows. Otherwise only one
+arrow pair for each date and time will be drawn. This option can be
+set only while creating the widget.
+
 =item -bell
 
 Specifies a boolean value. If true then a bell will ring if the user
@@ -909,14 +1098,16 @@ attempts to enter an illegal character (e.g. a non-digit).
 =item -check
 
 If set to a true value, Tk::Date makes sure that the user can't input
-incorrect dates.
+incorrect dates. This option can be set only while creating the
+widget.
 
 =item -choices
 
-Creates an additional choice button. The argument to I<-choices> must be one
-of C<now>, C<today>, C<yesterday> or C<tomorrow>, or an array with a
-combination of those. If only one is used, only a simple button is created,
-otherwise an optionmenu.
+Creates an additional choice button. The argument to I<-choices> must
+be one of C<now>, C<today>, C<yesterday> or C<tomorrow>, or an array
+with a combination of those. If only one is used, only a simple button
+is created, otherwise an optionmenu. This option can be set only while
+creating the widget.
 
 Examples:
 
@@ -957,7 +1148,8 @@ dot, followed by a two-character wide month entry, another dot, and
 finally a four-character wide year entry. The characters are the same
 as in the strftime function (see L<POSIX>). It is also possible to use
 the 'A' letter for displaying the (localized) weekday name. See below
-in the EXAMPLES section for a more US-like date format.
+in the EXAMPLES section for a more US-like date format. This option
+can be set only while creating the widget.
 
 =item -decbitmap
 
@@ -966,18 +1158,26 @@ decrease bitmap.
 
 =item -editable
 
-If set to a false value, disables editing of the date widget. All entries
-are converted to labels and there are no arrow buttons. Defaults to
-true (widget is editable).
+If set to a false value, disables editing of the date widget. All
+entries are converted to labels and there are no arrow buttons.
+Defaults to true (widget is editable). This option can be set only
+while creating the widget.
 
 =item -fields
 
-Specifies which fields are constructed: date, time or both. Defaults to both.
+Specifies which fields are constructed: date, time or both. Defaults
+to both. This option can be set only while creating the widget.
 
 =item -incbitmap
 
 Sets the bitmap for the increase button. Defaults to FireButton's default
 increase bitmap.
+
+=item -monthnames
+
+Replace the standard month names (either English or as supplied by
+the locale system) with a user-defined array. The argument should be a
+reference to a hash with 12 elements.
 
 =item -precommand
 
@@ -1005,11 +1205,13 @@ format of the time entries. By default, the format string is
 "%2H.%2M.%2S" meaning a two-character wide hour entry, followed by a
 dot, followed by a two-character wide minute entry, another dot, and
 finally a two-character wide seconds entry. The characters are the
-same as in the strftime function (see L<POSIX>).
+same as in the strftime function (see L<POSIX>). This option can be
+set only while creating the widget.
 
 =item -selectlabel
 
-Change label text for choice menu. Defaults to 'Select:'.
+Change label text for choice menu. Defaults to 'Select:'. This option
+can be set only while creating the widget.
 
 =item -value
 
@@ -1019,11 +1221,19 @@ B<datehash> or B<now> (for the current time).
 =item -varfmt
 
 Specifies the format of the I<-variable> or I<-value> argument. May be
-B<unixtime> (default) or B<datehash>.
+B<unixtime> (default) or B<datehash>. This option can be set only
+while creating the widget.
 
 =item -variable
 
 Ties the specified variable to the widget. (See Bugs)
+
+=item -weekdays
+
+Replace the standard weekday names (either English or as supplied by
+the locale system) with a user-defined array. The argument should be a
+reference to a hash with seven elements. The names have to start with
+Sunday.
 
 =back
 
@@ -1064,20 +1274,32 @@ Use the datehash format instead of unixtime:
 	     -varfmt => 'datehash',
 	    )->pack;
 
+=head1 NOTES
+
+Please note that the full set of features only available, if the
+Tk-GBARR distribution is also installed. However, the widget also
+works without this distribution, only lacking the arrow buttons.
+
+If the POSIX module is available, localised weekday and month names
+will be used instead of English names. Otherwise you have to use the
+-weekday and -monthnames options.
+
 =head1 BUGS/TODO
+
+ - The -orient option can be only set while creating the widget. Also
+   other options are only settable at create time.
 
  - waiting for a real perl Date/Time object
  - tie interface (-variable) does not work if the date widget gets destroyed
    (see uncommented DESTROY)
- - get and set must use the tied variable, unless tieying does no work
+ - get and set must use the tied variable, otherwise tieying does no work
    at all
- - -from/-to (limit) (or -minvalue, -maxvalue?)
+ - -from/-to is missing (limit) (or -minvalue, -maxvalue?)
  - range check (in DateNumEntryPlain::incdec)
  - am/pm
  - more interactive examples are needed for some design issues (how strong
    signal errors? ...)
- - Wochentag wird beim Hoch-/Runterzaehlen von m und y nicht aktualisiert
- - check date-Funktion
+ - check date-Function
  - optionally use Tk::DateEntry for the date part
 
 =head1 SEE ALSO
@@ -1091,9 +1313,8 @@ Slaven Rezic <eserte@cs.tu-berlin.de>
 
 =head1 COPYRIGHT
 
-Copyright (c) 1997, 1998, 1999 Slaven Rezic. All rights reserved.
-This module is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself.
+Copyright (c) 1997, 1998, 1999, 2000 Slaven Rezic. All rights
+reserved. This module is free software; you can redistribute it and/or
+modify it under the same terms as Perl itself.
 
 =cut
-
