@@ -1,10 +1,10 @@
 # -*- perl -*-
 
 #
-# $Id: Date.pm,v 1.29 1999/01/12 23:56:56 eserte Exp $
+# $Id: Date.pm,v 1.33 1999/03/20 12:19:56 eserte Exp $
 # Author: Slaven Rezic
 #
-# Copyright (C) 1997, 1998 Slaven Rezic. All rights reserved.
+# Copyright (C) 1997, 1998, 1999 Slaven Rezic. All rights reserved.
 # This package is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 #
@@ -19,15 +19,21 @@ use vars qw($VERSION @ISA $has_numentryplain);
 @ISA = qw(Tk::Frame);
 Construct Tk::Widget 'Date';
 
-$VERSION = '0.24';
+$VERSION = '0.27';
 
 my @monlen = (undef, 31, undef, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31);
+ # XXX DST?
 my %choice = 
-  ('today'     => ['Today',     sub { time() }],
-   'now'       => ['Now',       sub { time() }],
-   'yesterday' => ['Yesterday', sub { time()-86400 } ],
-   'tomorrow'  => ['Tomorrow',  sub { time()+86400 } ],
-   'reset'     => ['Reset',     'RESET'],
+  ('today'              => ['Today',     sub { time() }],
+   'now'                => ['Now',       sub { time() }],
+   'yesterday'          => ['Yesterday', sub { time()-86400 } ],
+   'tomorrow'           => ['Tomorrow',  sub { time()+86400 } ],
+
+   'today_midnight'     => ['Today',     sub { _begin_of_day(time()) }],
+   'yesterday_midnight' => ['Yesterday', sub { _begin_of_day(time()-86400) } ],
+   'tomorrow_midnight'  => ['Tomorrow',  sub { _begin_of_day(time()+86400) } ],
+
+   'reset'              => ['Reset',     'RESET'],
   );
 
 $has_numentryplain = 0;
@@ -268,6 +274,7 @@ sub Populate {
 				-highlightthickness => 2,
 				-text => $w->{Configure}{-selectlabel},
 			       );
+	    $w->Advertise('chooser' => $b);
 	    $b_menu = $b->Menu;
 	    $b->configure(-menu => $b_menu);
 	    $b_sub = sub {
@@ -280,11 +287,12 @@ sub Populate {
 		    $w->set_localtime($time);
 		}
 		if ($w->{Configure}{-command}) {
-		    $w->{Configure}{-command}->($w);
+		    $w->Callback(-command => $w);
 		}
 	    };
 	} else {
 	    $b = $w->Button;
+	    $w->Advertise('chooserbutton' => $b);
 	}
 	$b->pack(-side => 'left');
 	foreach (@$choices) {
@@ -316,7 +324,7 @@ sub Populate {
 				      $w->set_localtime($time);
 				  }
 				  if ($w->{Configure}{-command}) {
-				      $w->{Configure}{-command}->($w);
+				      $w->Callback(-command => $w);
 				  }
 			      });
 	    }
@@ -345,15 +353,16 @@ sub Populate {
 sub value {
     my($w, $value) = @_;
     my $varfmt = $w->{Configure}{-varfmt};
-    my $var;
     if ($value eq 'now') {
 	$w->set_localtime($value);
     } elsif ($varfmt eq 'unixtime') {
-	tie $var, 'Tk::Date::UnixTime', $w, $value;
-	untie $var;
+	my $varref;
+	tie $varref, 'Tk::Date::UnixTime', $w, $value;
+	untie $varref;
     } elsif ($varfmt eq 'datehash') {
-	tie $var, 'Tk::Date::DateHash', $w, $value;
-	untie $var;
+	my %varref;
+	tie %varref, 'Tk::Date::DateHash', $w, $value;
+	untie %varref;
     } else {
 	die;
     }
@@ -418,9 +427,11 @@ sub variable {
     if (@_ > 1 and defined $varref) {
 	my $varfmt = $w->{Configure}{-varfmt};
 	if ($varfmt eq 'unixtime') {
-	    tie $$varref, 'Tk::Date::UnixTime', $w, $$varref; # XXX
+	    my $savevar = $$varref;
+	    tie $$varref, 'Tk::Date::UnixTime', $w, $savevar;
 	} elsif ($varfmt eq 'datehash') {
-	    tie %$varref, 'Tk::Date::DateHash', $w, %$varref;
+	    my(%savevar) = %$varref;
+	    tie %$varref, 'Tk::Date::DateHash', $w, \%savevar;
 	} else {
 	    tie $$varref, $varfmt, $w, $$varref;
 	}
@@ -478,7 +489,7 @@ sub reset {
 
 sub get {
     my($w, $fmt) = @_;
-    $fmt = '%+' if !defined $fmt;
+    $fmt = '%s' if !defined $fmt;
     my %date;
     foreach (qw(y m d H M S)) {
 	$date{$_} = $w->get_date($_, 1);
@@ -514,6 +525,9 @@ sub get {
     }
 }
 
+# Get the date/time value for key $key (S,M,H,d,m,y)
+# If $defined is set to true, always get a defined value, i.e. return
+# the current time if the key is not set in the widget.
 sub get_date {
     my($w, $key, $defined) = @_;
     my $sw = $w->{Sub}{$key};
@@ -532,6 +546,8 @@ sub get_date {
 	} elsif ($sw->isa('Tk::Label')) {
 	    $sw->cget(-text);
 	}
+    } elsif ($defined) {
+	_now($key);
     }
 }
 
@@ -674,11 +690,11 @@ sub inc_date {
 sub firebutton_command {
     my($w, $cw, $inc, $type) = @_;
     if ($w->{Configure}{-precommand}) {
-	return unless $w->{Configure}{-precommand}->($w, $type, $inc);
+	return unless $w->Callback(-precommand => $w, $type, $inc);
     }
     $w->inc_date($cw, $inc);
     if ($w->{Configure}{-command}) {
-	$w->{Configure}{-command}->($w, $type, $inc);
+	$w->Callback(-command => $w, $type, $inc);
     }
 }
 
@@ -687,6 +703,12 @@ sub _fmt_to_array {
     my @a = split(/(%\d*[dmyAHMS])/, $fmt);
     shift @a if $a[0] eq '';
     @a;
+}
+
+sub _begin_of_day {
+    my $s = shift;
+    my(@l) = localtime $s;
+    timelocal(0,0,0,$l[3],$l[4],$l[5]);
 }
 
 ## XXX causes segmentation fault
@@ -994,7 +1016,7 @@ Use the datehash format instead of unixtime:
 
 =head1 BUGS/TODO
 
- - waiting for a real Date/Time object
+ - waiting for a real perl Date/Time object
  - tie interface (-variable) does not work if the date widget gets destroyed
    (see uncommented DESTROY)
  - get and set must use the tied variable, unless tieying does no work
@@ -1002,7 +1024,7 @@ Use the datehash format instead of unixtime:
  - -from/-to (limit) (or -minvalue, -maxvalue?)
  - range check (in DateNumEntryPlain::incdec)
  - am/pm
- - more intractive examples are needed for some design issues (how strong
+ - more interactive examples are needed for some design issues (how strong
    signal errors? ...)
  - Wochentag wird beim Hoch-/Runterzaehlen von m und y nicht aktualisiert
  - check date-Funktion
@@ -1018,7 +1040,7 @@ Slaven Rezic <eserte@cs.tu-berlin.de>
 
 =head1 COPYRIGHT
 
-Copyright (c) 1997, 1998 Slaven Rezic. All rights reserved.
+Copyright (c) 1997, 1998, 1999 Slaven Rezic. All rights reserved.
 This module is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
 

@@ -130,13 +130,18 @@ sub date {
     $l1[$i2]->configure(-textvariable => undef);
 
 
-    my $getvalb = $f->Button(-text => 'Get values',
-			     -command => sub {
-				 for(my $i = 0; $i <= $#w; $i++) {
-				     $date[$i] = $w[$i]->get("%x, %X");
-				 }
-			     })->grid(-row => $row, -column => 0,
-				      -columnspan => 7, -sticky => 'ew');
+    my $getvalb = $f->Button
+      (-text => 'Get values',
+       -command => sub {
+	   warn "Tie values:\n";
+	   for(my $i = 0; $i <= $#w; $i++) {
+	       $date[$i] = $w[$i]->get("%x, %X");
+	       if (defined $w[$i]->cget(-variable)) {
+		   warn "  $i: " . $ {$w[$i]->cget(-variable)} . "\n";
+	       }
+	   }
+       })->grid(-row => $row, -column => 0,
+		-columnspan => 7, -sticky => 'ew');
     $getvalb->invoke();
 }
 
