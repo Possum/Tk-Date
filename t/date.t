@@ -10,7 +10,9 @@ package Tk::Widget;
 sub eventGenerate2 {
     my $w = shift;
     my $e = shift;
-    $w->eventGenerate($e, @_);
+    $w->eventGenerate($e, @_,
+		      ($Tk::VERSION >= 800.016 ? (-warp => 1) : ()),
+		     );
     if ($main::SLOW) {
 	warn "Event: $e => $w\n";
 	$w->update;
@@ -27,7 +29,7 @@ BEGIN { $| = 1; $^W = 1; print "1..25\n"; }
 END {print "not ok 1\n" unless $loaded;}
 $loaded = 1;
 my $ok = 1;
-$SLOW = 0;
+$SLOW = 1;
 print "ok " . $ok++ . "\n";
 
 BEGIN {
@@ -148,7 +150,7 @@ print (($nowstring ne $var4 ? "not " : "" . "ok ") . $ok++ . "\n");
 	print "not ";
     }
     print "ok " . ($ok++) . "\n";
-    
+
     $nowtime = time;
     $s = $dw_time->get("%s");
     $delta = abs($nowtime-$s);
@@ -156,12 +158,11 @@ print (($nowstring ne $var4 ? "not " : "" . "ok ") . $ok++ . "\n");
 	print "not ";
     }
     print "ok " . ($ok++) . "\n";
-    
-    eval { require POSIX };
-    if ($@) {
+
+    if ($^O ne 'freebsd') {
 	print "ok " . ($ok++) . "\n"; # skip
     } else {
-	$dw_time->get("%+");
+	$dw_time->get("%+"); # not supported everywhere
 	print "ok " . ($ok++) . "\n";
     }
 }
@@ -173,7 +174,7 @@ print (($nowstring ne $var4 ? "not " : "" . "ok ") . $ok++ . "\n");
 	print "not ";
     }
     print "ok " . ($ok++) . "\n";
-    
+
 
     my $nowtime = time;
     my $s = $dw_time->get;
@@ -190,12 +191,11 @@ print (($nowstring ne $var4 ? "not " : "" . "ok ") . $ok++ . "\n");
 	print "not ";
     }
     print "ok " . ($ok++) . "\n";
-    
-    eval { require POSIX };
-    if ($@) {
+
+    if ($^O ne 'freebsd') {
 	print "ok " . ($ok++) . "\n"; # skip
     } else {
-	$dw_time->get("%+");
+	$dw_time->get("%+"); # not supported everywhere
 	print "ok " . ($ok++) . "\n";
     }
 }
@@ -215,15 +215,17 @@ print (($nowstring ne $var4 ? "not " : "" . "ok ") . $ok++ . "\n");
 	print "not ";
     }
     print "ok " . ($ok++) . "\n";
+    if (0) {
     # XXX eventGenerate geht nicht mit Menubutton (?)
-#     $dw_time->Subwidget('chooser')->eventGenerate2('<ButtonPress-1>', '-x' => $x, '-y' => $y);
-#     $dw_time->update;
-# warn $dw_time->get("%s");
-# warn Tk::Date::_begin_of_day(time());
-#     if ($dw_time->get("%s") != Tk::Date::_begin_of_day(time())) {
-# 	print "not ";
-#     }
-#     print " ok " . ($ok++) . "\n";
+    $dw_time->Subwidget('chooser')->eventGenerate2('<ButtonPress-1>', '-x' => $x, '-y' => $y);
+    $dw_time->update;
+warn $dw_time->get("%s");
+warn Tk::Date::_begin_of_day(time());
+    if ($dw_time->get("%s") != Tk::Date::_begin_of_day(time())) {
+	print "not ";
+    }
+    print " ok " . ($ok++) . "\n";
+    }
 }
 
 {
@@ -301,7 +303,7 @@ print (($nowstring ne $var4 ? "not " : "" . "ok ") . $ok++ . "\n");
     }
     print "ok " . ($ok++) . "\n";
 
-}    
+}
 
 sub center2 {
     my($wid) = @_;

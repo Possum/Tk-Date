@@ -1,5 +1,11 @@
 Revision history for Perl extension Tk::Date.
 
+0.30
+	- pod additions for -datefmt and -timefmt
+
+0.29
+	- fixed two tests (+% is not standard part of POSIX)
+
 0.28
 	- fixed test no. 6 (mktime needs -1 for is_dst field)
 

@@ -1,7 +1,7 @@
 # -*- perl -*-
 
 #
-# $Id: Date.pm,v 1.34 1999/04/14 18:30:01 eserte Exp $
+# $Id: Date.pm,v 1.37 2000/06/13 21:53:49 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 1997, 1998, 1999 Slaven Rezic. All rights reserved.
@@ -19,11 +19,11 @@ use vars qw($VERSION @ISA $has_numentryplain);
 @ISA = qw(Tk::Frame);
 Construct Tk::Widget 'Date';
 
-$VERSION = '0.28';
+$VERSION = '0.30';
 
 my @monlen = (undef, 31, undef, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31);
  # XXX DST?
-my %choice = 
+my %choice =
   ('today'              => ['Today',     sub { time() }],
    'now'                => ['Now',       sub { time() }],
    'yesterday'          => ['Yesterday', sub { time()-86400 } ],
@@ -53,7 +53,7 @@ eval {
     sub incdec {
 	my($e, $inc, $i) = @_;
 	my $val = $e->get;
-	    
+
 	# XXX $inc == 0 -> range check
 	if (defined $inc and $inc != 0) {
 	    my $dw = $e->parent->parent; # XXX dangerous
@@ -80,9 +80,9 @@ sub Populate {
     };
 
     my $input = 1;
-    if (exists $args->{-editable}) { $input = delete $args->{-editable} }
+    if (exists $args->{-editable}) { $input  = delete $args->{-editable} }
     my $fields = 'both';
-    if (exists $args->{-fields}) { $fields = delete $args->{-fields} }
+    if (exists $args->{-fields})   { $fields = delete $args->{-fields} }
     if ($fields !~ /^(date|time|both)$/) {
 	die "Invalid option for -fields: must be date, time or both";
     }
@@ -129,7 +129,7 @@ sub Populate {
 		    $w->{Var}{$k} = undef;
 		    my $dne;
 		    if ($has_numentryplain) {
-			$dne = 
+			$dne =
 			  $dw->DateNumEntryPlain
 			    (-width => $l,
 			     (exists $range{$k} ?
@@ -142,7 +142,7 @@ sub Populate {
 			     -textvariable => \$w->{Var}{$k},
 			    );
 		    } else {
-			$dne = 
+			$dne =
 			  $dw->Entry(-width => $l,
 				     -textvariable => \$w->{Var}{$k});
 		    }
@@ -152,7 +152,7 @@ sub Populate {
 			$dne->bind('<FocusOut>' =>
 				   sub { $w->inc_date($dw, 0)});
 		    }
-		    push(@{$w->{NumEntries}}, $dne);
+		    push @{$w->{NumEntries}}, $dne;
 		}
 		push(@{$dw->{Sub}}, $k);
 		$w->{'len'}{$k} = $l;
@@ -229,9 +229,9 @@ sub Populate {
 			$dne->bind('<FocusOut>' =>
 				   sub { $w->inc_date($tw, 0)});
 		    }
-		    push(@{$w->{NumEntries}}, $dne);
+		    push @{$w->{NumEntries}}, $dne;
 		}
-		push(@{$tw->{Sub}}, $k);
+		push @{$tw->{Sub}}, $k;
 		$w->{'len'}{$k} = $l;
 	    } else {
 		$tw->Label(-text => $_,
@@ -260,7 +260,7 @@ sub Populate {
 	    push(@{$w->{IncFireButtons}}, $fb1);
 	    push(@{$w->{DecFireButtons}}, $fb2);
 	}
-	
+
     }
 
     if (@$choices) {
@@ -339,12 +339,14 @@ sub Populate {
        -incbitmap      => ['METHOD',      'incBitmap',  'IncBitmap',
 			   $Tk::FireButton::INCBITMAP],
        -bell           => ['METHOD', 'bell', 'Bell', undef],
-       -background     => ['DESCENDANTS', 'background', 'Background', undef], 
-       -foreground     => ['DESCENDANTS', 'foreground', 'Foreground', undef], 
+       -background     => ['DESCENDANTS', 'background', 'Background', undef],
+       -foreground     => ['DESCENDANTS', 'foreground', 'Foreground', undef],
        -precommand     => ['CALLBACK',    'preCommand', 'PreCommand', undef],
        -command        => ['CALLBACK',    'command',    'Command',    undef],
        -variable       => ['METHOD',      'variable',   'Variable',   undef],
        -value          => ['METHOD',      'value',      'Value',      undef],
+       -innerbg        => ['SETMETHOD',   'innerBg', 'InnerBg',    undef],
+       -innerfg        => ['SETMETHOD',   'innerFg', 'InnerFg',    undef],
       );
 
     $w;
@@ -404,6 +406,16 @@ sub bell {
 	local $SIG{__DIE__};
 	$w->subwconfigure($w->{NumEntries}, '-bell', @_);
     };
+}
+
+sub innerfg {
+    my($w, $key, $val) = @_;
+    $w->subwconfigure($w->{NumEntries}, '-fg', $val);
+}
+
+sub innerbg {
+    my($w, $key, $val) = @_;
+    $w->subwconfigure($w->{NumEntries}, '-bg', $val);
 }
 
 sub subwconfigure {
@@ -510,18 +522,22 @@ sub get {
 	return $ret;
     } else {
 	my $ret;
+	my $errors = "";
 	$ret = eval {
 	    require POSIX;
 	    POSIX::strftime($fmt, @date{qw(S M H d m y)}, 0, 0, -1);
 	};
 	return $ret if (!$@);
+	$errors .= $@;
 	$ret = eval {
 	    require Date::Format;
 	    Date::Format::strftime($fmt, [@date{qw(S M H d m y)}, 0, 0, -1]);
 	};
 	return $ret if (!$@);
+	$errors .= $@;
 	die "Can't access strftime function." .
-	  "You have to install either the POSIX or Date::Format module.\n";
+	  "You have to install either the POSIX or Date::Format module.\n" .
+	  "Detailed errors:\n$errors";
     }
 }
 
@@ -679,11 +695,25 @@ sub inc_date {
 	    }
 	}
     }
+
+    my @check_order;
     if (defined $w->{SubWidget}{'dateframe'} and
 	$ww eq $w->{SubWidget}{'dateframe'}) {
-	$w->set_date('d', $w->get_date('d', 1)+$inc);
+	@check_order = qw(d m y);
     } else {
-	$w->set_date('S', $w->get_date('S', 1)+$inc);
+	@check_order = qw(S M H);
+    }
+
+    # search an existing date entry field
+    my $entry_field;
+    foreach (@check_order) {
+	if (defined $w->{Sub}{$_}) {
+	    $entry_field = $_;
+	    last;
+	}
+    }
+    if (defined $entry_field) {
+	$w->set_date($entry_field, $w->get_date($entry_field, 1)+$inc);
     }
 }
 
@@ -918,6 +948,17 @@ Specifies a callback which is executed every time after an arrow
 button is selected. The callback is called with the date widget as its
 argument.
 
+=item -datefmt
+
+This is a sprintf/printf-like format string for setting the order and
+format of the date entries. By default, the format string is
+"%2d.%2m.%4y" meaning a two-character wide day entry, followed by a
+dot, followed by a two-character wide month entry, another dot, and
+finally a four-character wide year entry. The characters are the same
+as in the strftime function (see L<POSIX>). It is also possible to use
+the 'A' letter for displaying the (localized) weekday name. See below
+in the EXAMPLES section for a more US-like date format.
+
 =item -decbitmap
 
 Sets the bitmap for the decrease button. Defaults to FireButton's default
@@ -954,8 +995,17 @@ decrement. Defaults to 50 milliseconds.
 
 =item -repeatdelay
 
-Specifies the amount of time before the increment or decrement is first done 
+Specifies the amount of time before the increment or decrement is first done
 after the Button-1 is pressed over the widget. Defaults to 500 milliseconds.
+
+=item -timefmt
+
+This is a sprintf/printf-like format string for setting the order and
+format of the time entries. By default, the format string is
+"%2H.%2M.%2S" meaning a two-character wide hour entry, followed by a
+dot, followed by a two-character wide minute entry, another dot, and
+finally a two-character wide seconds entry. The characters are the
+same as in the strftime function (see L<POSIX>).
 
 =item -selectlabel
 
@@ -1028,6 +1078,7 @@ Use the datehash format instead of unixtime:
    signal errors? ...)
  - Wochentag wird beim Hoch-/Runterzaehlen von m und y nicht aktualisiert
  - check date-Funktion
+ - optionally use Tk::DateEntry for the date part
 
 =head1 SEE ALSO
 

@@ -100,6 +100,13 @@ sub date {
 		  -value => 'now',
 		 );
 
+    single_widget('Only parts',
+		  -datefmt => "%2d.%2m",
+		  -timefmt => "%2H.%2M",
+		  -value => 'now',
+		  -choices => ['today', 'reset'],
+		 );
+
     my $i2;
     $i2 = single_widget
       ('All options set',
@@ -115,8 +122,8 @@ sub date {
        -repeatdelay => 300,
        -borderwidth => 2,
        -relief => 'raised',
-       -bg => 'white',
-       -fg => 'red',
+       -innerbg => 'white',
+       -innerfg => 'red',
        -orient => 'horiz',
        -incbitmap => $HINCBITMAP,
        -decbitmap => $HDECBITMAP,
