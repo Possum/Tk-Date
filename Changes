@@ -1,5 +1,8 @@
 Revision history for Perl extension Tk::Date.
 
+0.38
+	- new -state option
+
 0.37
 	- new -readonly option
 

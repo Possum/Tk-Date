@@ -25,7 +25,7 @@ use Tk::Date;
 use strict;
 use vars qw($loaded $SLOW);
 
-BEGIN { $| = 1; $^W = 1; print "1..31\n"; }
+BEGIN { $| = 1; $^W = 1; print "1..37\n"; }
 END {print "not ok 1\n" unless $loaded;}
 $loaded = 1;
 my $ok = 1;
@@ -339,6 +339,44 @@ print (($nowstring ne $var4 ? "not " : "" . "ok ") . $ok++ . "\n");
 	print "not ";
     }
     print "ok " . ($ok++) . "\n";
+}
+
+{
+    # test -state
+    my $d = $top->Date(-state => "disabled");
+    if (!$d->isa('Tk::Date')) {
+	print "not ";
+    }
+    print "ok " . ($ok++) . "\n";
+    if ($d->cget(-state) ne 'disabled') {
+	print "not ";
+    }
+    print "ok " . ($ok++) . "\n";
+    $d->configure(-state => "normal");
+    if ($d->cget(-state) ne 'normal') {
+	print "not ";
+    }
+    print "ok " . ($ok++) . "\n";
+}
+
+{
+    # test -state together with -editable
+    my $d = $top->Date(-editable => 0);
+    if (!$d->isa('Tk::Date')) {
+	print "not ";
+    }
+    print "ok " . ($ok++) . "\n";
+    $d->configure(-state => 'disabled');
+    if ($d->cget(-state) ne 'disabled') {
+	print "not ";
+    }
+    print "ok " . ($ok++) . "\n";
+    $d->configure(-state => "normal");
+    if ($d->cget(-state) ne 'normal') {
+	print "not ";
+    }
+    print "ok " . ($ok++) . "\n";
+
 }
 
 my $weekdays = Tk::Date::_get_week_days;

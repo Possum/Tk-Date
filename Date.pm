@@ -1,10 +1,10 @@
 # -*- perl -*-
 
 #
-# $Id: Date.pm,v 1.50 2001/08/08 09:15:14 eserte Exp $
+# $Id: Date.pm,v 1.52 2001/08/08 21:19:32 eserte Exp $
 # Author: Slaven Rezic
 #
-# Copyright (C) 1997, 1998, 1999, 2000 Slaven Rezic. All rights reserved.
+# Copyright (C) 1997, 1998, 1999, 2000, 2001 Slaven Rezic. All rights reserved.
 # This package is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 #
@@ -22,7 +22,7 @@ use vars qw($VERSION @ISA $has_numentryplain $has_numentry
 @ISA = qw(Tk::Frame);
 Construct Tk::Widget 'Date';
 
-$VERSION = '0.37';
+$VERSION = '0.38';
 
 @monlen = (undef, 31, undef, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31);
  # XXX DST?
@@ -139,9 +139,9 @@ sub Populate {
 
     # and now the construction-time options
 
-    # -input
-    my $input = 1;
-    if (exists $args->{-editable}) { $input  = delete $args->{-editable} }
+    # -editable
+    my $editable = 1;
+    if (exists $args->{-editable}) { $editable  = delete $args->{-editable} }
 
     # -fields
     my $fields = 'both';
@@ -237,7 +237,7 @@ sub Populate {
 	foreach (@datefmt) {
 	    if ($_ =~ /^%(\d+)?(.)$/) {
 		my($l, $k) = ($1, $2);
-		if (!$input || $k eq 'A') {  # A = weekday
+		if (!$editable || $k eq 'A') {  # A = weekday
 		    $w->{Sub}{$k} =
 		      $dw->Label(($l ? (-width => $l) : ()),
 				 -borderwidth => 0,
@@ -302,7 +302,7 @@ sub Populate {
 	    }
 	}
 
-	if ($input && $has_firebutton && !$allarrows) {
+	if ($editable && $has_firebutton && !$allarrows) {
 	    my $f = $dw->Frame->pack(-side => 'left');
 	    my($fb1, $fb2);
 	    if ($orient eq 'h') {
@@ -342,7 +342,7 @@ sub Populate {
 	foreach (@timefmt) {
 	    if ($_ =~ /^%(\d)?(.)$/) {
 		my($l, $k) = ($1, $2);
-		if (!$input) {
+		if (!$editable) {
 		    $w->{Sub}{$k} =
 		      $tw->Label(-width => $l,
 				 -borderwidth => 0,
@@ -384,7 +384,7 @@ sub Populate {
 			  )->pack(-side => 'left');
 	    }
 	}
-	if ($input && $has_firebutton && !$allarrows) {
+	if ($editable && $has_firebutton && !$allarrows) {
 	    my $f = $tw->Frame->pack(-side => 'left');
 	    my($fb1, $fb2);
 	    if ($orient eq 'h') {
@@ -504,6 +504,7 @@ sub Populate {
        -value          => ['METHOD',      'value',      'Value',      undef],
        -innerbg        => ['SETMETHOD',   'innerBg', 'InnerBg',    undef],
        -innerfg        => ['SETMETHOD',   'innerFg', 'InnerFg',    undef],
+       -state          => ['METHOD',      'state',   'State',      'normal'],
       );
 
     $w;
@@ -573,6 +574,20 @@ sub innerfg {
 sub innerbg {
     my($w, $key, $val) = @_;
     $w->subwconfigure($w->{NumEntries}, '-bg', $val);
+}
+
+sub state {
+    my($w, $state) = @_;
+    if (@_ > 1) {
+	die "Invalid state $state" if $state !~ /^(normal|disabled)$/;
+	foreach my $ww (values %{ $w->{Sub} }) {
+	    eval '$ww->configure(-state => $state);';
+	    #warn "$ww: $@" if $@;
+	}
+	$w->{Configure}{-state} = $state;
+    } else {
+	$w->{Configure}{-state};
+    }
 }
 
 sub subwconfigure {
@@ -1266,6 +1281,13 @@ decrement. Defaults to 50 milliseconds.
 
 Specifies the amount of time before the increment or decrement is first done
 after the Button-1 is pressed over the widget. Defaults to 500 milliseconds.
+
+=item -state
+
+Specifies one of two states for the date widget: C<normal> or
+C<disabled>. If the date widget is disabled then the value may not be
+changed using the user interface (that is, by typing in the entry
+subwidgets or pressing on the increment/decrement buttons).
 
 =item -timefmt
 

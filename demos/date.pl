@@ -98,6 +98,7 @@ sub date {
     single_widget('All arrows',
 		  -value => 'now',
 		  -allarrows => 1,
+		  -state => 'normal',#'disabled',
 		  -command => sub { print STDERR join(" ", @_), "\n" },
 		 );
 
