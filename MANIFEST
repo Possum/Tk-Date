@@ -7,3 +7,4 @@ MANIFEST
 Makefile.PL
 README
 t/date.t
+t/noprereq.t

@@ -1,5 +1,7 @@
 Revision history for Perl extension Tk::Date.
 
+0.34
+	- corrected probems with -(pre)command and -allarrows
 0.33
 	- new predefined choices tokens: beginning_of_month and end_of_month
 	- new options: -monthnames, -weekdays, -monthmenu, -allarrows

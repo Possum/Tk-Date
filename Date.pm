@@ -1,7 +1,7 @@
 # -*- perl -*-
 
 #
-# $Id: Date.pm,v 1.44 2000/09/02 23:22:17 eserte Exp $
+# $Id: Date.pm,v 1.47 2001/02/23 23:03:50 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 1997, 1998, 1999, 2000 Slaven Rezic. All rights reserved.
@@ -22,7 +22,7 @@ use vars qw($VERSION @ISA $has_numentryplain $has_numentry
 @ISA = qw(Tk::Frame);
 Construct Tk::Widget 'Date';
 
-$VERSION = '0.33';
+$VERSION = '0.34';
 
 @monlen = (undef, 31, undef, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31);
  # XXX DST?
@@ -75,8 +75,9 @@ eval {
 	my($w, $args) = @_;
 	$w->SUPER::Populate($args);
 	$w->ConfigSpecs
-	    (-frameparent =>    [qw/PASSIVE/],
+	    (-frameparent    => [qw/PASSIVE/],
 	     -numentryparent => [qw/PASSIVE/, undef, undef, $w],
+	     -field          => [qw/PASSIVE/],
 	    );
     }
     sub value { }
@@ -87,7 +88,7 @@ eval {
 	if (defined $inc and $inc != 0) {
 	    my $fw = $e->cget(-frameparent);
 	    my $date_w = $fw->parent;
-	    $date_w->inc_date($fw, $inc, $e->cget(-numentryparent));
+	    $date_w->firebutton_command($fw, $inc, $e->cget(-field));
 	}
     }
 
@@ -120,6 +121,11 @@ eval {
 ######################################################################
 
 package Tk::Date;
+
+sub MonthOptionmenu {
+    require Tk::Optionmenu;
+    "Optionmenu";
+}
 
 sub Populate {
     my($w, $args) = @_;
@@ -156,7 +162,11 @@ sub Populate {
 
     # -allarrows
     my $allarrows      = delete $args->{-allarrows};
-    if (!$has_numentry) { $allarrows = 0 }
+    if (!$has_numentry and $allarrows) {
+	warn "-allarrows needs Tk::NumEntry => disabled"
+	    if $^W;
+	$allarrows = 0;
+    }
 
     # -monthmenu
     $w->{Configure}{-monthmenu} = delete $args->{-monthmenu};
@@ -230,20 +240,20 @@ sub Populate {
 		    my $dne;
 		    if ($k eq 'm' and $w->{Configure}{-monthmenu}) {
 			my $month_i = 1;
-			# XXX an Optionmenu would be more suitable, but
-			# the -textvariable/-variable stuff is still a mess...
-			require Tk::Optionmenu;
-			$dne = $dw->Optionmenu
+			my $dummy; # this is only for Tk's < 800.023
+			my $Optionmenu = $w->MonthOptionmenu;
+			$dne = $dw->$Optionmenu
 			    (-variable => \$w->{Var}{$k},
-			     -textvariable => \$w->{Var}{$k},
+			     -textvariable => \$dummy,
 			     ($check
 			      ? (-command => sub { $w->inc_date($dw,0) })
                               : ()
                              ),
 			    );
-			$dne->addOptions(map { [$month_i++ => $_ ] }
+			$dne->addOptions(map { [$_ => $month_i++ ] }
 					 @{ $w->{Configure}{-monthnames} });
 		    } else {
+			my $e_dne;
 			if ($has_numentryplain || $has_numentry) {
 			    $dne =
 				$dw->$DateEntry
@@ -257,13 +267,16 @@ sub Populate {
 				     # XXX NumEntryPlain ist buggy
 				     -textvariable => \$w->{Var}{$k},
 				     -frameparent => $dw,
+				     -field => $k,
 				    );
+			    $e_dne = $dne->Subwidget("entry") || $dne;
 			} else {
-			    $dne =
+			    $e_dne = $dne =
 				$dw->Entry(-width => $l,
 					   -textvariable => \$w->{Var}{$k});
 			}
 		    }
+
 		    $w->{Sub}{$k} = $dne;
 		    $dne->pack(-side => 'left');
 		    if ($check) {
@@ -280,6 +293,7 @@ sub Populate {
 			  )->pack(-side => 'left');
 	    }
 	}
+
 	if ($input && $has_firebutton && !$allarrows) {
 	    my $f = $dw->Frame->pack(-side => 'left');
 	    my($fb1, $fb2);
@@ -339,6 +353,7 @@ sub Populate {
 			    ) : ()),
 			   -textvariable => \$w->{Var}{$k},
 			   -frameparent => $tw,
+			   -field => $k,
 			  );
 		    } else {
 			$dne = $tw->Entry(-width => $l,
@@ -624,6 +639,10 @@ sub reset {
 	if (Tk::Exists($sw)) {
 	    if ($key eq 'A' || $sw->isa('Tk::Label')) {
 		$sw->configure(-text => '');
+	    } elsif ($sw->isa('Tk::Optionmenu')) {
+		# XXX hackish!
+		$ {$sw->cget('-variable')} = 1;
+		$ {$sw->cget('-textvariable')} = $w->{Configure}{-monthnames}->[0];
 	    } else {
 		$sw->delete(0, 'end');
 		$sw->insert(0, '');
@@ -693,6 +712,9 @@ sub get_date {
 		$r = _now($key);
 	    }
 	    $r;
+	} elsif ($sw->isa('Tk::Optionmenu')) {
+	    # XXX hackish!
+	    $ {$sw->cget('-variable')};
 	} elsif ($sw->isa('Tk::Label')) {
 	    $sw->cget(-text);
 	}
@@ -764,6 +786,10 @@ sub set_date {
 		$sw->isa('Tk::NumEntry')) {
 		$sw->delete(0, 'end');
 		$sw->insert(0, $v);
+	    } elsif ($sw->isa('Tk::Optionmenu')) {
+		# XXX hackish!
+		$ {$sw->cget('-variable')} = $v;
+		$ {$sw->cget('-textvariable')} = $w->{Configure}{-monthnames}->[$v-1];
 	    } elsif ($sw->isa('Tk::Label')) {
 		$sw->configure(-text => $v);
 	    }
@@ -1037,10 +1063,11 @@ a date:
 =item * Using the keyboard to input the digits and the tab key or the mouse
 pointer to move focus between fields.
 
-=item * Using up and down cursor keys to increment/decrement the date.
+=item * Using up and down cursor keys to increment/decrement the
+date (only with installed Tk::NumEntryPlain widget).
 
 =item * Selecting up and down arrow buttons will increment or decrement
-the value of the active field.
+the value of the active field (only with installed Tk::FireButton widget).
 
 =back
 
@@ -1082,13 +1109,17 @@ vertical (default) or horizontal.
 
 =head1 WIDGET-SPECIFIC OPTIONS
 
+Some options are only available if the prerequisite modules from the
+Tk-GBARR distribution are installed too.
+
 =over 4
 
 =item -allarrows
 
 If true then all entry fields will obtain arrows. Otherwise only one
 arrow pair for each date and time will be drawn. This option can be
-set only while creating the widget.
+set only while creating the widget. This option needs the Tk::NumEntry
+widget to be installed.
 
 =item -bell
 
@@ -1136,8 +1167,10 @@ the day before yesterday.
 =item -command
 
 Specifies a callback which is executed every time after an arrow
-button is selected. The callback is called with the date widget as its
-argument.
+button is selected. The callback is called with the following
+arguments: reference of date widget, field specifier, increment value.
+The field specifier is either "date" or "time" or one of "H", "M",
+"S", "d", "m", "y" for the possible time and date fields.
 
 =item -datefmt
 
@@ -1172,6 +1205,10 @@ to both. This option can be set only while creating the widget.
 
 Sets the bitmap for the increase button. Defaults to FireButton's default
 increase bitmap.
+
+=item -monthmenu
+
+Use an optionmenu for input of the month.
 
 =item -monthnames
 
@@ -1301,6 +1338,7 @@ will be used instead of English names. Otherwise you have to use the
    signal errors? ...)
  - check date-Function
  - optionally use Tk::DateEntry for the date part
+ - -command is not fully implemented
 
 =head1 SEE ALSO
 

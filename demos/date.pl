@@ -92,11 +92,13 @@ sub date {
 		  -timefmt => "%2H.%2M.%2S",
 		  -value => 'now',
 		  -choices => ['today', 'reset'],
+		  -command => sub { print STDERR join(" ", @_), "\n" },
 		 );
 
     single_widget('All arrows',
 		  -value => 'now',
 		  -allarrows => 1,
+		  -command => sub { print STDERR join(" ", @_), "\n" },
 		 );
 
     single_widget('Horizontal arrows',
@@ -145,13 +147,12 @@ sub date {
        -incbitmap => $HINCBITMAP,
        -decbitmap => $HDECBITMAP,
        -command => sub {
-	   $l1[$i2]->configure(-text => $w[$i2]->get("%x, %X"));
+	   warn $w[$i2]->get("%x, %X");
 # segfaults... why?
 #	   $l1[$i2]->configure(-text => $w[$i2]->get("%+"));
        },
        -check => 1,
       );
-    $l1[$i2]->configure(-textvariable => undef);
 
 
     my $getvalb = $f->Button
