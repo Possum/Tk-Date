@@ -1,5 +1,15 @@
 Revision history for Perl extension Tk::Date.
 
+0.23
+	- new options: -check and -selectlabel
+	- Tk::NumEntryPlain and Tk::FireButton are optional now
+	- better datehash support for tie
+	- pod additions (example...)
+	- bug fixes
+
+0.22
+	- minor keyboard focus corrections
+
 0.21
 	- new options: -editable (replaces -output_only),
 	  -fields (replaces -date_only and -time_only),

@@ -24,7 +24,7 @@ WriteMakefile
 sub MY::postamble {
 	'
 demo :: pure_all
-	$(FULLPERL) -w -I$(SITELIBEXP)/Tk/demos/widget_lib -Mblib demos/date.pl
+	$(FULLPERL) -w -I$(SITELIBEXP)/Tk/demos/widget_lib -I$(SITEARCHEXP)/Tk/demos/widget_lib -Mblib demos/date.pl
 
 ';
 }

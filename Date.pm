@@ -1,7 +1,7 @@
 # -*- perl -*-
 
 #
-# $Id: Date.pm,v 1.23 1998/02/01 20:53:01 eserte Exp $
+# $Id: Date.pm,v 1.27 1998/12/16 22:08:45 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 1997, 1998 Slaven Rezic. All rights reserved.
@@ -13,15 +13,13 @@
 #
 
 package Tk::Date;
-use Tk::NumEntryPlain;
-use Tk::FireButton;
 use POSIX qw(strftime mktime);
 use strict;
 use vars qw($VERSION @ISA);
 @ISA = qw(Tk::Frame);
 Construct Tk::Widget 'Date';
 
-$VERSION = '0.21';
+$VERSION = '0.22';
 
 my @monlen = (undef, 31, undef, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31);
 my %choice = 
@@ -32,9 +30,46 @@ my %choice =
    'reset'     => ['Reset',     'RESET'],
   );
 
+my $has_numentryplain = 0;
+
+######################################################################
+package Tk::Date::NumEntryPlain;
+use vars qw(@ISA);
+eval {
+    require Tk::NumEntryPlain;
+    @ISA = qw(Tk::NumEntryPlain);
+    Construct Tk::Widget 'DateNumEntryPlain';
+
+    sub value { }
+
+    sub incdec {
+	my($e, $inc, $i) = @_;
+	my $val = $e->get;
+	    
+	# XXX $inc == 0 -> range check
+	if (defined $inc and $inc != 0) {
+	    my $dw = $e->parent->parent; # XXX dangerous
+	    my $fw = $e->parent;
+	    $dw->inc_date($fw, $inc);
+	}
+    }
+
+    $Tk::Date::has_numentryplain++;
+};
+
+######################################################################
+
+package Tk::Date;
+
 sub Populate {
     my($w, $args) = @_;
     $w->SUPER::Populate($args);
+
+    my $has_firebutton = 0;
+    eval {
+	require Tk::FireButton;
+	$has_firebutton = 1;
+    };
 
     my $input = 1;
     if (exists $args->{-editable}) { $input = delete $args->{-editable} }
@@ -60,6 +95,8 @@ sub Populate {
     } else {
 	$orient = $1;
     }
+    $w->{Configure}{-selectlabel} = delete $args->{-selectlabel} || 'Select:';
+    my $check          = delete $args->{-check};
 
     $w->{IncFireButtons} = [];
     $w->{DecFireButtons} = [];
@@ -82,18 +119,31 @@ sub Populate {
 				)->pack(-side => 'left');
 		} else {
 		    $w->{Var}{$k} = undef;
-		    my $dne = $w->{Sub}{$k} =
-		      $dw->DateNumEntryPlain
-			(-width => $l,
-			 (exists $range{$k} ?
-			  ((defined $range{$k}->[0]
-			    ? (-minvalue => $range{$k}->[0]) : ()),
-			   (defined $range{$k}->[1]
-			    ? (-minvalue => $range{$k}->[1]) : ()),
-			  ) : ()),
-			 # XXX NumEntryPlain ist buggy
-			 -textvariable => \$w->{Var}{$k},
-			)->pack(-side => 'left');
+		    my $dne;
+		    if ($has_numentryplain) {
+			$dne = 
+			  $dw->DateNumEntryPlain
+			    (-width => $l,
+			     (exists $range{$k} ?
+			      ((defined $range{$k}->[0]
+				? (-minvalue => $range{$k}->[0]) : ()),
+			       (defined $range{$k}->[1]
+				? (-minvalue => $range{$k}->[1]) : ()),
+			      ) : ()),
+			     # XXX NumEntryPlain ist buggy
+			     -textvariable => \$w->{Var}{$k},
+			    );
+		    } else {
+			$dne = 
+			  $dw->Entry(-width => $l,
+				     -textvariable => \$w->{Var}{$k});
+		    }
+		    $w->{Sub}{$k} = $dne;
+		    $dne->pack(-side => 'left');
+		    if ($check) {
+			$dne->bind('<FocusOut>' =>
+				   sub { $w->inc_date($dw, 0)});
+		    }
 		    push(@{$w->{NumEntries}}, $dne);
 		}
 		push(@{$dw->{Sub}}, $k);
@@ -104,15 +154,25 @@ sub Populate {
 			  )->pack(-side => 'left');
 	    }
 	}
-	if ($input) {
+	if ($input && $has_firebutton) {
 	    my $f = $dw->Frame->pack(-side => 'left');
-	    my $fb1 = $f->FireButton
-	      (-command => sub { $w->firebutton_command($dw, +1, 'date') },
-	      )->pack(-side => ($orient eq 'h' ? 'right' : 'top'));
+	    my($fb1, $fb2);
+	    if ($orient eq 'h') {
+		$fb2 = $f->FireButton
+		  (-command => sub { $w->firebutton_command($dw, -1, 'date') },
+		  )->pack(-side => 'left');
+		$fb1 = $f->FireButton
+		  (-command => sub { $w->firebutton_command($dw, +1, 'date') },
+		  )->pack(-side => 'left');
+	    } else {
+		$fb1 = $f->FireButton
+		  (-command => sub { $w->firebutton_command($dw, +1, 'date') },
+		  )->pack;
+		$fb2 = $f->FireButton
+		  (-command => sub { $w->firebutton_command($dw, -1, 'date') },
+		  )->pack;
+	    }
 	    push(@{$w->{IncFireButtons}}, $fb1);
-	    my $fb2 = $f->FireButton
-	      (-command => sub { $w->firebutton_command($dw, -1, 'date') },
-	      )->pack(-side => ($orient eq 'h' ? 'right' : 'top'));
 	    push(@{$w->{DecFireButtons}}, $fb2);
 	}
     }
@@ -139,17 +199,28 @@ sub Populate {
 				)->pack(-side => 'left');
 		} else {
 		    $w->{Var}{$k} = undef;
-		    my $dne = $w->{Sub}{$k} =
-		      $tw->DateNumEntryPlain
-			(-width => $l,
-			 (exists $range{$k} ?
-			  ((defined $range{$k}->[0]
-			    ? (-minvalue => $range{$k}->[0]) : ()),
-			   (defined $range{$k}->[1]
-			    ? (-minvalue => $range{$k}->[1]) : ()),
-			  ) : ()),
-			 -textvariable => \$w->{Var}{$k},
-			)->pack(-side => 'left');
+		    my $dne;
+		    if ($has_numentryplain) {
+			$dne = $tw->DateNumEntryPlain
+			  (-width => $l,
+			   (exists $range{$k} ?
+			    ((defined $range{$k}->[0]
+			      ? (-minvalue => $range{$k}->[0]) : ()),
+			     (defined $range{$k}->[1]
+			      ? (-minvalue => $range{$k}->[1]) : ()),
+			    ) : ()),
+			   -textvariable => \$w->{Var}{$k},
+			  );
+		    } else {
+			$dne = $tw->Entry(-width => $l,
+					  -textvariable => \$w->{Var}{$k});
+		    }
+		    $w->{Sub}{$k} = $dne;
+		    $dne->pack(-side => 'left');
+		    if ($check) {
+			$dne->bind('<FocusOut>' =>
+				   sub { $w->inc_date($tw, 0)});
+		    }
 		    push(@{$w->{NumEntries}}, $dne);
 		}
 		push(@{$tw->{Sub}}, $k);
@@ -160,27 +231,56 @@ sub Populate {
 			  )->pack(-side => 'left');
 	    }
 	}
-	if ($input) {
+	if ($input && $has_firebutton) {
 	    my $f = $tw->Frame->pack(-side => 'left');
-	    my $fb1 = $f->FireButton
-	      (-command => sub { $w->firebutton_command($tw, +1, 'time') },
-	      )->pack(-side => ($orient eq 'h' ? 'right' : 'top'));
+	    my($fb1, $fb2);
+	    if ($orient eq 'h') {
+		$fb2 = $f->FireButton
+		  (-command => sub { $w->firebutton_command($tw, -1, 'time') },
+		  )->pack(-side => 'left');
+		$fb1 = $f->FireButton
+		  (-command => sub { $w->firebutton_command($tw, +1, 'time') },
+		  )->pack(-side => 'left');
+	    } else {
+		$fb1 = $f->FireButton
+		  (-command => sub { $w->firebutton_command($tw, +1, 'time') },
+		  )->pack;
+		$fb2 = $f->FireButton
+		  (-command => sub { $w->firebutton_command($tw, -1, 'time') },
+		  )->pack;
+	    }
 	    push(@{$w->{IncFireButtons}}, $fb1);
-	    my $fb2 = $f->FireButton
-	      (-command => sub { $w->firebutton_command($tw, -1, 'time') },
-	      )->pack(-side => ($orient eq 'h' ? 'right' : 'top'));
 	    push(@{$w->{DecFireButtons}}, $fb2);
 	}
 	
     }
 
     if (@$choices) {
-	my $b;
+	my($b, $b_menu, $b_sub);
 	my %text2time;
 	if (@$choices > 1) {
-	    require Tk::Optionmenu;
-	    $b = $w->Optionmenu(-relief => 'raised',
-				-borderwidth => 2);
+	    require Tk::Menubutton;
+	    $b = $w->Menubutton(-relief => 'raised',
+				-borderwidth => 2,
+				-takefocus => 1,
+				-highlightthickness => 2,
+				-text => $w->{Configure}{-selectlabel},
+			       );
+	    $b_menu = $b->Menu;
+	    $b->configure(-menu => $b_menu);
+	    $b_sub = sub {
+		my $time = $text2time{$_[0]};
+		if (ref $time eq 'CODE') {
+		    $w->set_localtime(&$time);
+		} elsif ($time eq 'RESET') {
+		    $w->reset;
+		} else {
+		    $w->set_localtime($time);
+		}
+		if ($w->{Configure}{-command}) {
+		    $w->{Configure}{-command}->($w);
+		}
+	    };
 	} else {
 	    $b = $w->Button;
 	}
@@ -200,7 +300,9 @@ sub Populate {
 	    $text2time{$text} = $time;
 
 	    if (@$choices > 1) {
-		$b->addOptions($text);
+		$b_menu->command(-label => $text,
+				 -command => sub { &$b_sub($text) },
+				);
 	    } else {
 		$b->configure(-text => $text,
 			      -command => sub {
@@ -217,37 +319,21 @@ sub Populate {
 			      });
 	    }
 	}
-	if (@$choices > 1) {
-	    $b->configure(-command => sub {
-			      my $time = $text2time{$_[0]};
-			      if (ref $time eq 'CODE') {
-				  $w->set_localtime(&$time);
-			      } elsif ($time eq 'RESET') {
-				  $w->reset;
-			      } else {
-				  $w->set_localtime($time);
-			      }
-			      if ($w->{Configure}{-command}) {
-				  $w->{Configure}{-command}->($w);
-			      }
-			  });
-	}
     }
 
     $w->ConfigSpecs
       (-repeatinterval => ['METHOD', 'repeatInterval', 'RepeatInterval', 50],
-       -repeatdelay    => ['METHOD', 'repeatDelay',    'RepeatDelay',    500],
-       -bell           => ['METHOD', 'bell', 'Bell', undef],
+       -repeatdelay    => ['METHOD', 'repeatDelay',    'RepeatDelay',   500],
        -decbitmap      => ['METHOD',      'decBitmap',  'DecBitmap',
-		           $Tk::FireButton::DECBITMAP],
+			   $Tk::FireButton::DECBITMAP],
        -incbitmap      => ['METHOD',      'incBitmap',  'IncBitmap',
-		           $Tk::FireButton::INCBITMAP],
+			   $Tk::FireButton::INCBITMAP],
+       -bell           => ['METHOD', 'bell', 'Bell', undef],
        -background     => ['DESCENDANTS', 'background', 'Background', undef], 
        -foreground     => ['DESCENDANTS', 'foreground', 'Foreground', undef], 
        -precommand     => ['CALLBACK',    'preCommand', 'PreCommand', undef],
        -command        => ['CALLBACK',    'command',    'Command',    undef],
        -variable       => ['METHOD',      'variable',   'Variable',   undef],
-       -varfmt         => ['PASSIVE',     'varFmt',     'VarFmt',  'unixtime'],
        -value          => ['METHOD',      'value',      'Value',      undef],
       );
 
@@ -273,25 +359,40 @@ sub value {
 
 sub decbitmap {
     my $w = shift;
-    $w->subwconfigure($w->{DecFireButtons}, '-bitmap', @_);
+    eval {
+	local $SIG{__DIE__};
+	$w->subwconfigure($w->{DecFireButtons}, '-bitmap', @_);
+    };
 }
 sub incbitmap {
     my $w = shift;
-    $w->subwconfigure($w->{IncFireButtons}, '-bitmap', @_);
+    eval {
+	local $SIG{__DIE__};
+	$w->subwconfigure($w->{IncFireButtons}, '-bitmap', @_);
+    };
 }
 sub repeatinterval {
     my $w = shift;
-    $w->subwconfigure([@{$w->{DecFireButtons}}, @{$w->{IncFireButtons}}],
-		      '-repeatinterval', @_);
+    eval {
+	local $SIG{__DIE__};
+	$w->subwconfigure([@{$w->{DecFireButtons}}, @{$w->{IncFireButtons}}],
+			  '-repeatinterval', @_);
+    };
 }
 sub repeatdelay {
     my $w = shift;
-    $w->subwconfigure([@{$w->{DecFireButtons}}, @{$w->{IncFireButtons}}],
-		      '-repeatdelay', @_);
+    eval {
+	local $SIG{__DIE__};
+	$w->subwconfigure([@{$w->{DecFireButtons}}, @{$w->{IncFireButtons}}],
+			  '-repeatdelay', @_);
+    };
 }
 sub bell {
     my $w = shift;
-    $w->subwconfigure($w->{NumEntries}, '-bell', @_);
+    eval {
+	local $SIG{__DIE__};
+	$w->subwconfigure($w->{NumEntries}, '-bell', @_);
+    };
 }
 
 sub subwconfigure {
@@ -317,7 +418,7 @@ sub variable {
 	if ($varfmt eq 'unixtime') {
 	    tie $$varref, 'Tk::Date::UnixTime', $w, $$varref; # XXX
 	} elsif ($varfmt eq 'datehash') {
-	    tie $$varref, 'Tk::Date::DateHash', $w, $$varref;
+	    tie %$varref, 'Tk::Date::DateHash', $w, %$varref;
 	} else {
 	    tie $$varref, $varfmt, $w, $$varref;
 	}
@@ -378,13 +479,14 @@ sub get {
     $fmt = '%+' if !defined $fmt;
     my %date;
     foreach (qw(y m d H M S)) {
-	$date{$_} = $w->get_date($_);
+	$date{$_} = $w->get_date($_, 1);
 	if ($date{$_} eq '') { $date{$_} = 0 }
     }
     $date{'m'}--;
     $date{'y'}-=1900;
 # XXX weekday should also be set
-    strftime($fmt, @date{qw(S M H d m y)});
+    # -1: let strftime divine whether summer time is in effect
+    strftime($fmt, @date{qw(S M H d m y)}, 0, 0, -1);
 }
 
 sub get_date {
@@ -398,7 +500,7 @@ sub get_date {
 	    } else {
 		$r = $sw->get;
 	    }
-	    if (!defined $r or $r eq '') {
+	    if (!defined $r or $r eq '' && $defined) {
 		$r = _now($key);
 	    }
 	    $r;
@@ -415,11 +517,11 @@ sub set_date {
 
     if ($key eq 'd') {
 	if ($value < 1) {
-	    my $m = $w->set_date('m', $w->get_date('m')-1);
-	    $value = _monlen($m, $w->get_date('y'));
+	    my $m = $w->set_date('m', $w->get_date('m', 1)-1);
+	    $value = _monlen($m, $w->get_date('y', 1));
 	} else {
-	    my $m = $w->get_date('m');
-	    if ($value > _monlen($m, $w->get_date('y'))) {
+	    my $m = $w->get_date('m', 1);
+	    if ($value > _monlen($m, $w->get_date('y', 1))) {
 		$value = 1;
 		$w->set_date('m', $m+1);
 	    }
@@ -427,34 +529,34 @@ sub set_date {
     } elsif ($key eq 'm') {
 	if ($value < 1) {
 	    $value = 12;
-	    $w->set_date('y', $w->get_date('y')-1);
+	    $w->set_date('y', $w->get_date('y', 1)-1);
 	} elsif ($value > 12) {
 	    $value = 1;
-	    $w->set_date('y', $w->get_date('y')+1);
+	    $w->set_date('y', $w->get_date('y', 1)+1);
 	}
     } elsif ($key eq 'H') {
 	if ($value < 0) {
 	    $value = 23;
-	    $w->set_date('d', $w->get_date('d')-1);
+	    $w->set_date('d', $w->get_date('d', 1)-1);
 	} elsif ($value > 23) {
 	    $value = 0;
-	    $w->set_date('d', $w->get_date('d')+1);
+	    $w->set_date('d', $w->get_date('d', 1)+1);
 	}
     } elsif ($key eq 'M') {
 	if ($value < 0) {
 	    $value = 59;
-	    $w->set_date('H', $w->get_date('H')-1);
+	    $w->set_date('H', $w->get_date('H', 1)-1);
 	} elsif ($value > 59) {
 	    $value = 0;
-	    $w->set_date('H', $w->get_date('H')+1);
+	    $w->set_date('H', $w->get_date('H', 1)+1);
 	}
     } elsif ($key eq 'S') {
 	if ($value < 0) {
 	    $value = 59;
-	    $w->set_date('M', $w->get_date('M')-1);
+	    $w->set_date('M', $w->get_date('M', 1)-1);
 	} elsif ($value > 59) {
 	    $value = 0;
-	    $w->set_date('M', $w->get_date('M')+1);
+	    $w->set_date('M', $w->get_date('M', 1)+1);
 	}
     }
 
@@ -474,11 +576,11 @@ sub set_date {
     }
 
     if ($key eq 'd') {
-	my $d = $w->get_date('d');
+	my $d = $w->get_date('d', 1);
 	if ($d eq '') { $d = 0 }
-	my $m = $w->get_date('m');
+	my $m = $w->get_date('m', 1);
 	if ($m eq '') { $m = 0 }
-	my $y = $w->get_date('y');
+	my $y = $w->get_date('y', 1);
 	if ($y eq '') { $y = 0 }
 	# XXX make independent from mktime
 	my $t = mktime(0,0,0, $d, $m-1, $y-1900);
@@ -516,14 +618,19 @@ sub _now {
 
 sub inc_date {
     my($w, $ww, $inc) = @_;
-    my $current_focus = $w->focusCurrent;
-    foreach (@{$ww->{Sub}}) {
-	if ($current_focus eq $w->{Sub}{$_}) {
-	    $w->set_date($_, $w->get_date($_, 1)+$inc);
-	    return;
+    if ($inc != 0) { # $inc == 0: only check and correct date
+	my $current_focus = $w->focusCurrent;
+	if ($current_focus) {
+	    foreach (@{$ww->{Sub}}) {
+		if ($current_focus eq $w->{Sub}{$_}) {
+		    $w->set_date($_, $w->get_date($_, 1)+$inc);
+		    return;
+		}
+	    }
 	}
     }
-    if ($ww eq $w->{SubWidget}{'dateframe'}) {
+    if (defined $w->{SubWidget}{'dateframe'} and
+	$ww eq $w->{SubWidget}{'dateframe'}) {
 	$w->set_date('d', $w->get_date('d', 1)+$inc);
     } else {
 	$w->set_date('S', $w->get_date('S', 1)+$inc);
@@ -553,11 +660,8 @@ sub _Destroyed {
     my $w = shift;
     if ($] >= 5.00452) {
 	my $varref = $w->{Configure}{'-variable'};
-warn "varref is $varref";
 	if (defined $varref) {
-warn "Untie $varref (val before $$varref)";
 	    untie $$varref;
-warn "val after: $$varref";
 	}
     }
     $w->SUPER::DESTROY($w);
@@ -565,29 +669,7 @@ warn "val after: $$varref";
 
 ######################################################################
 
-package Tk::Date::NumEntryPlain;
-use vars qw(@ISA);
-@ISA = qw(Tk::NumEntryPlain);
-Construct Tk::Widget 'DateNumEntryPlain';
-
-sub value { }
-
-sub incdec {
-    my($e, $inc, $i) = @_;
-    my $val = $e->get;
-
-    # XXX $inc == 0 -> range check
-    if (defined $inc and $inc != 0) {
-	my $dw = $e->parent->parent; # XXX dangerous
-	my $fw = $e->parent;
-	$dw->inc_date($fw, $inc);
-    }
-}
-
-######################################################################
-
 package Tk::Date::UnixTime;
-#use Carp qw(cluck);
 
 sub TIESCALAR {
     my($class, $w, $init) = @_;
@@ -601,7 +683,6 @@ sub TIESCALAR {
 }
 
 sub STORE {
-#    cluck "STORE @_";
     my($self, $value) = @_;
     my(@t) = localtime $value;
     my $setdate = { 'S' => $t[0],
@@ -618,41 +699,47 @@ sub STORE {
 }
 
 sub FETCH {
-#    cluck "FETCH @_";
     my $self = shift;
     $self->{Widget}->get("%s");
 }
 
 ######################################################################
 
-
 package Tk::Date::DateHash;
 
-sub TIESCALAR {
+sub TIEHASH {
     my($class, $w, $init) = @_;
     my $self = {};
     $self->{Widget} = $w;
     bless $self, $class;
     if (defined $init) {
-	$self->STORE($init);
+	while(my($k, $v) = each %$init) {
+	    $self->STORE($k, $v);
+	}
     }
     $self;
 }
 
 sub STORE {
-    my($self, $value) = @_;
-    foreach (qw(y m d H M S)) { # umgekehrte Reihenfolge!
-	$self->{Widget}->set_date($_, $value->{$_});
-    }
+    my($self, $field, $value) = @_;
+    $self->{Widget}->set_date($field, $value);
 }
 
 sub FETCH {
+    my($self, $field) = @_;
+    $self->{Widget}->get_date($field, 1);
+}
+
+sub FIRSTKEY {
     my $self = shift;
-    my $datehash = {};
-    foreach (qw(y m d H M S)) {
-	$datehash->{$_} = $self->{Widget}->get_date($_);
-    }
-    $datehash;
+    $self->{Key} = -1;
+    $self->NEXTKEY;
+}
+
+sub NEXTKEY {
+    my $self = shift;
+    return undef if (++$self->{Key} > 5);
+    (qw(y m d H M S))[$self->{Key}];
 }
 
 ######################################################################
@@ -732,6 +819,11 @@ vertical (default) or horizontal.
 Specifies a boolean value. If true then a bell will ring if the user
 attempts to enter an illegal character (e.g. a non-digit).
 
+=item -check
+
+If set to a true value, Tk::Date makes sure that the user can't input
+incorrect dates.
+
 =item -choices
 
 Creates an additional choice button. The argument to I<-choices> must be one
@@ -808,6 +900,10 @@ decrement. Defaults to 50 milliseconds.
 Specifies the amount of time before the increment or decrement is first done 
 after the Button-1 is pressed over the widget. Defaults to 500 milliseconds.
 
+=item -selectlabel
+
+Change label text for choice menu. Defaults to 'Select:'.
+
 =item -value
 
 Sets an initial value for the widget. The argument may be B<unixtime>,
@@ -833,10 +929,28 @@ The B<Date> widget supports the following non-standard method:
 =item B<get>([I<fmt>])
 
 Gets the current value of the date widget. If I<fmt> is not given, the
-returned value is in unix time (seconds since epoch), otherwise I<fmt> is
-a format string which is fed to B<strftime>.
+returned value is in unix time (seconds since epoch), otherwise I<fmt>
+is a format string which is fed to B<strftime> (see L<POSIX>).
 
 =back
+
+=head1 EXAMPLES
+
+Display a date widget with only the date field in the format dd/mm/yyyy
+and get the value in the same format:
+
+  $date = $top->Date(-datefmt => '%2d/%2m/%4y',
+	  	     -fields => 'date',
+		     -value => 'now')->pack;
+  $top->Button(-text => 'Get date',
+	       -command => sub { warn $date->get("%d/%m/%Y") })->pack;
+
+Use the datehash format instead of unixtime:
+
+  $top->Date(-fields  => 'date',
+	     -value   => {'d' => '13', 'm' => '12', 'y' => '1957'},
+	     -varfmt => 'datehash',
+	    )->pack;
 
 =head1 BUGS/TODO
 
@@ -851,10 +965,12 @@ a format string which is fed to B<strftime>.
  - more intractive examples are needed for some design issues (how strong
    signal errors? ...)
  - Wochentag wird beim Hoch-/Runterzaehlen von m und y nicht aktualisiert
+ - check date-Funktion
 
 =head1 SEE ALSO
 
-L<Tk>, L<Tk::NumEntryPlain>, L<Tk::FireButton>, L<POSIX>
+L<Tk|Tk>, L<Tk::NumEntryPlain|Tk::NumEntryPlain>,
+L<Tk::FireButton|Tk::FireButton>, L<POSIX|POSIX>
 
 =head1 AUTHOR
 

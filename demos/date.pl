@@ -109,6 +109,7 @@ sub date {
 		    ['christmas' => { 'm' => 12,
 				      'd' => 25 }],
 		    'reset'],
+       -selectlabel => 'Wähle:',
        -bell => 0,
        -repeatinterval => 10,
        -repeatdelay => 300,
@@ -123,7 +124,8 @@ sub date {
 	   $l1[$i2]->configure(-text => $w[$i2]->get("%x, %X"));
 # segfaults... why?
 #	   $l1[$i2]->configure(-text => $w[$i2]->get("%+"));
-       }
+       },
+       -check => 1,
       );
     $l1[$i2]->configure(-textvariable => undef);
 

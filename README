@@ -12,6 +12,9 @@ To install, type
 	$ make
 	$ make install
 
+Additional requirements (it's not essential, but recommended):
+Tk-GBARR-1.03.tar.gz or better.
+
 After installation, you may start the "widget" program to invoke a
 Tk::Date demonstration. The demo is also startable with "make demo" before
 installation.
