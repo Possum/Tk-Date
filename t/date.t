@@ -11,7 +11,7 @@ use Tk::Date;
 use strict;
 use vars qw($loaded);
 
-BEGIN { $| = 1; $^W = 1; print "1..6\n"; }
+BEGIN { $| = 1; $^W = 1; print "1..7\n"; }
 END {print "not ok 1\n" unless $loaded;}
 $loaded = 1;
 my $ok = 1;
@@ -105,3 +105,7 @@ my $dw4 = $top->Date(-varfmt => 'Tk::Date::MyDate',
 my(@now) = localtime;
 my $nowstring = sprintf("%04d%02d%02d", $now[5]+1900, $now[4]+1, $now[3]);
 print (($nowstring ne $var4 ? "not " : "" . "ok ") . $ok++ . "\n");
+
+my $dw_time = $top->Date(-fields => 'time', -value => 'now')->pack;
+print "ok " . ($ok++) . "\n";
+

@@ -1,7 +1,7 @@
 # -*- perl -*-
 
 #
-# $Id: Date.pm,v 1.28 1998/12/19 02:25:08 eserte Exp $
+# $Id: Date.pm,v 1.29 1999/01/12 23:56:56 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 1997, 1998 Slaven Rezic. All rights reserved.
@@ -19,7 +19,7 @@ use vars qw($VERSION @ISA $has_numentryplain);
 @ISA = qw(Tk::Frame);
 Construct Tk::Widget 'Date';
 
-$VERSION = '0.23';
+$VERSION = '0.24';
 
 my @monlen = (undef, 31, undef, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31);
 my %choice = 
@@ -546,9 +546,12 @@ sub set_date {
 	    $value = _monlen($m, $w->get_date('y', 1));
 	} else {
 	    my $m = $w->get_date('m', 1);
-	    if ($value > _monlen($m, $w->get_date('y', 1))) {
-		$value = 1;
-		$w->set_date('m', $m+1);
+	    if (defined $m and $m ne '') {
+		my $y = $w->get_date('y', 1);
+		if (defined $y and $y ne '' and $value > _monlen($m, $y)) {
+		    $value = 1;
+		    $w->set_date('m', $m+1);
+		}
 	    }
 	}
     } elsif ($key eq 'm') {
@@ -602,21 +605,20 @@ sub set_date {
 
     if ($key eq 'd') {
 	my $d = $w->get_date('d', 1);
-	if ($d eq '') { $d = 0 }
 	my $m = $w->get_date('m', 1);
-	if ($m eq '') { $m = 0 }
 	my $y = $w->get_date('y', 1);
-	if ($y eq '') { $y = 0 }
-	my $t = timelocal(0,0,0, $d, $m-1, $y-1900);
-	if (defined $t) {
-	    eval {
-		require POSIX;
-	    };
-	    if (!$@) {
-		# prefer POSIX because of localized weekday names
-		$w->set_date('A', POSIX::strftime("%A", localtime($t)));
-	    } else {
-		$w->set_date('A', $wkday[(localtime($t))[6]]);
+	if ($d ne '' and $m ne '' and $y ne '') {
+	    my $t = timelocal(0,0,0, $d, $m-1, $y-1900);
+	    if (defined $t) {
+		eval {
+		    require POSIX;
+		};
+		if (!$@) {
+		    # prefer POSIX because of localized weekday names
+		    $w->set_date('A', POSIX::strftime("%A", localtime($t)));
+		} else {
+		    $w->set_date('A', $wkday[(localtime($t))[6]]);
+		}
 	    }
 	}
     }

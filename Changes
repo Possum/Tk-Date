@@ -1,5 +1,8 @@
 Revision history for Perl extension Tk::Date.
 
+0.24
+	- Bug fix (-fields => 'time' did not work)
+
 0.23
 	- Using Time::Local::timelocal instead of POSIX::mktime. For the
           strftime function, Date::Format is used as a fallback if POSIX is
