@@ -58,6 +58,7 @@ BEGIN {
 }
 
 my $top = new MainWindow;
+$top->geometry("+0+0");
 
 my $dw = $top->Date->pack;
 print ((ref $dw ne 'Tk::Date' ? "not " : "") . "ok " . $ok++ . "\n");

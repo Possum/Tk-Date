@@ -6,4 +6,4 @@ examples/simpleclock
 MANIFEST
 Makefile.PL
 README
-test.pl
+t/date.t

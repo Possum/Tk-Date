@@ -1,7 +1,7 @@
 # -*- perl -*-
 
 #
-# $Id: Date.pm,v 1.27 1998/12/16 22:08:45 eserte Exp $
+# $Id: Date.pm,v 1.28 1998/12/19 02:25:08 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 1997, 1998 Slaven Rezic. All rights reserved.
@@ -13,13 +13,13 @@
 #
 
 package Tk::Date;
-use POSIX qw(strftime mktime);
+use Time::Local qw(timelocal);
 use strict;
-use vars qw($VERSION @ISA);
+use vars qw($VERSION @ISA $has_numentryplain);
 @ISA = qw(Tk::Frame);
 Construct Tk::Widget 'Date';
 
-$VERSION = '0.22';
+$VERSION = '0.23';
 
 my @monlen = (undef, 31, undef, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31);
 my %choice = 
@@ -30,7 +30,9 @@ my %choice =
    'reset'     => ['Reset',     'RESET'],
   );
 
-my $has_numentryplain = 0;
+$has_numentryplain = 0;
+my @wkday = ('Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday',
+	     'Friday', 'Saturday');
 
 ######################################################################
 package Tk::Date::NumEntryPlain;
@@ -485,8 +487,31 @@ sub get {
     $date{'m'}--;
     $date{'y'}-=1900;
 # XXX weekday should also be set
-    # -1: let strftime divine whether summer time is in effect
-    strftime($fmt, @date{qw(S M H d m y)}, 0, 0, -1);
+    # -1: let strftime/mktime divine whether summer time is in effect
+    if ($fmt eq '%s') {
+	# %s is an (BSD?) extension to strftime and not part of POSIX. Use
+	# timelocal (this is the perl mktime) instead.
+        my $ret;
+	$ret = eval {
+	    local $SIG{'__DIE__'};
+	    timelocal(@date{qw(S M H d m y)});
+	};
+	return $ret;
+    } else {
+	my $ret;
+	$ret = eval {
+	    require POSIX;
+	    POSIX::strftime($fmt, @date{qw(S M H d m y)}, 0, 0, -1);
+	};
+	return $ret if (!$@);
+	$ret = eval {
+	    require Date::Format;
+	    Date::Format::strftime($fmt, [@date{qw(S M H d m y)}, 0, 0, -1]);
+	};
+	return $ret if (!$@);
+	die "Can't access strftime function." .
+	  "You have to install either the POSIX or Date::Format module.\n";
+    }
 }
 
 sub get_date {
@@ -582,10 +607,17 @@ sub set_date {
 	if ($m eq '') { $m = 0 }
 	my $y = $w->get_date('y', 1);
 	if ($y eq '') { $y = 0 }
-	# XXX make independent from mktime
-	my $t = mktime(0,0,0, $d, $m-1, $y-1900);
+	my $t = timelocal(0,0,0, $d, $m-1, $y-1900);
 	if (defined $t) {
-	    $w->set_date('A', strftime "%A", localtime($t));
+	    eval {
+		require POSIX;
+	    };
+	    if (!$@) {
+		# prefer POSIX because of localized weekday names
+		$w->set_date('A', POSIX::strftime("%A", localtime($t)));
+	    } else {
+		$w->set_date('A', $wkday[(localtime($t))[6]]);
+	    }
 	}
     }
 
@@ -790,9 +822,10 @@ January 2038. For other dates, it is possible to use a hash notation:
       M => minute,
       S => second }
 
-The abbreviations are derivated by the format letters of strftime.
+The abbreviations are derivated from the format letters of strftime.
 Note that year is the full year (1998 instead of 98) and month is the
-real month number, as opposed to the output of localtime().
+real month number, as opposed to the output of localtime(), where the
+month is subtracted by one.
 
 In this document, the first method will be referred as B<unixtime> and
 the second method as B<datehash>.
@@ -928,9 +961,13 @@ The B<Date> widget supports the following non-standard method:
 
 =item B<get>([I<fmt>])
 
-Gets the current value of the date widget. If I<fmt> is not given, the
-returned value is in unix time (seconds since epoch), otherwise I<fmt>
-is a format string which is fed to B<strftime> (see L<POSIX>).
+Gets the current value of the date widget. If I<fmt> is not given or
+equal "%s", the returned value is in unix time (seconds since epoch).
+This should work on all systems.
+
+Otherwise, I<fmt> is a format string which is fed to B<strftime>.
+B<strftime> needs the L<POSIX|POSIX> module installed and therefore
+may not work on all systems.
 
 =back
 
@@ -942,6 +979,7 @@ and get the value in the same format:
   $date = $top->Date(-datefmt => '%2d/%2m/%4y',
 	  	     -fields => 'date',
 		     -value => 'now')->pack;
+  # this "get" only works for systems with POSIX.pm
   $top->Button(-text => 'Get date',
 	       -command => sub { warn $date->get("%d/%m/%Y") })->pack;
 

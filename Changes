@@ -1,13 +1,18 @@
 Revision history for Perl extension Tk::Date.
 
 0.23
+	- Using Time::Local::timelocal instead of POSIX::mktime. For the
+          strftime function, Date::Format is used as a fallback if POSIX is
+          not available.
+        - renamed test.pl to t/date.t
+        - Bug fixes: fixed the installation location of the demo program
+
+0.22
 	- new options: -check and -selectlabel
 	- Tk::NumEntryPlain and Tk::FireButton are optional now
 	- better datehash support for tie
 	- pod additions (example...)
 	- bug fixes
-
-0.22
 	- minor keyboard focus corrections
 
 0.21

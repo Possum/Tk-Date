@@ -170,6 +170,8 @@ return 1 if caller();
 require WidgetDemo;
 
 $MW = new MainWindow;
-$MW->geometry("-0-0");
+$MW->geometry("+0+0");
+$MW->Button(-text => 'Close',
+	    -command => sub { $MW->destroy })->pack;
 date('date');
 MainLoop;

@@ -13,10 +13,12 @@ To install, type
 	$ make install
 
 Additional requirements (it's not essential, but recommended):
-Tk-GBARR-1.03.tar.gz or better.
+Tk-GBARR-1.03.tar.gz or better. For full functionality of the "get"
+method, either the POSIX or Date::Format module is also needed.
 
-After installation, you may start the "widget" program to invoke a
-Tk::Date demonstration. The demo is also startable with "make demo" before
+After installation, you may start the "widget" program to invoke the
+Tk::Date demonstration (it's in the "User Contributed Demonstrations"
+section). The demo is also startable with "make demo" before
 installation.
 
 Send bug reports, comments and suggestions to eserte@cs.tu-berlin.de
