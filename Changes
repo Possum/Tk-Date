@@ -1,0 +1,26 @@
+Revision history for Perl extension Tk::Date.
+
+0.21
+	- new options: -editable (replaces -output_only),
+	  -fields (replaces -date_only and -time_only),
+	  -choices (replaces -today_button), -variable, -value,
+	  -varfmt, -command (replaces -callback), -precommand, -orient,
+	  -decbitmap, -incbitmap
+	- using ConfigSpecs
+	- Tk::Date::DateHash
+	- demo moved from test.pl to demos/date.pl
+	- Bundle::Tk-Date
+
+0.20
+	- using Tk::NumEntryPlain and Tk::FireButton
+
+0.10
+	- Tk::LenEntry integrated
+	- Tk::Date::UnixDate
+	- weekday
+	- new -callback, -empty and -today_button options
+	- ...
+
+0.01  Thu Sep 11 15:34:22 1997
+	- original version
+

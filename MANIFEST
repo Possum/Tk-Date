@@ -1,0 +1,9 @@
+Changes
+Date.pm
+Tk-Date.pm
+demos/date.pl
+examples/simpleclock
+MANIFEST
+Makefile.PL
+README
+test.pl

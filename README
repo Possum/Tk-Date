@@ -1,0 +1,19 @@
+Tk::Date Module
+
+Tk::Date is a date widget in development. See demos/date.pl or the
+examples subdirectory for usage examples.
+
+The pod is still rudimentary, but there are at least all options listed.
+Note that tied variables don't work very well.
+
+To install, type
+
+	$ perl Makefile.PL
+	$ make
+	$ make install
+
+After installation, you may start the "widget" program to invoke a
+Tk::Date demonstration. The demo is also startable with "make demo" before
+installation.
+
+Send bug reports, comments and suggestions to eserte@cs.tu-berlin.de
