@@ -77,7 +77,7 @@ sub date {
 
     single_widget('Only time', -fields => 'time');
 
-    my $i1 = single_widget('Read-only', -editable => 0, -value => 'now');
+    my $i1 = single_widget('Non-editable', -editable => 0, -value => 'now');
     my $timer;
     $timer = $w[$i1]->repeat(999, sub {
 				 if (Tk::Exists($w[$i1])) {
@@ -98,6 +98,13 @@ sub date {
     single_widget('All arrows',
 		  -value => 'now',
 		  -allarrows => 1,
+		  -command => sub { print STDERR join(" ", @_), "\n" },
+		 );
+
+    single_widget('All arrows, readonly',
+		  -value => 'now',
+		  -allarrows => 1,
+		  -readonly => 1,
 		  -command => sub { print STDERR join(" ", @_), "\n" },
 		 );
 

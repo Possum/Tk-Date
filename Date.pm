@@ -1,7 +1,7 @@
 # -*- perl -*-
 
 #
-# $Id: Date.pm,v 1.49 2001/04/30 17:33:00 eserte Exp $
+# $Id: Date.pm,v 1.50 2001/08/08 09:15:14 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 1997, 1998, 1999, 2000 Slaven Rezic. All rights reserved.
@@ -22,7 +22,7 @@ use vars qw($VERSION @ISA $has_numentryplain $has_numentry
 @ISA = qw(Tk::Frame);
 Construct Tk::Widget 'Date';
 
-$VERSION = '0.36';
+$VERSION = '0.37';
 
 @monlen = (undef, 31, undef, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31);
  # XXX DST?
@@ -193,7 +193,7 @@ sub Populate {
     my $check          = delete $args->{-check};
 
     # -weekdays
-    $w->{Configure}{-weekdays} = delete $args->{-weekdays} 
+    $w->{Configure}{-weekdays} = delete $args->{-weekdays}
                                  || $w->_get_week_days;
 
     die "-weekdays argument should be a reference to a 7-element array"
@@ -207,13 +207,20 @@ sub Populate {
 	if (!ref $w->{Configure}{-monthnames} eq 'ARRAY' and
 	    scalar $w->{Configure}{-monthnames} != 12);
 
+    # -readonly
+    my $readonly = delete $args->{-readonly};
+
     $w->{IncFireButtons} = [];
     $w->{DecFireButtons} = [];
     $w->{NumEntries}     = [];
 
     my $DateEntry;
+    my @DateEntryArgs;
     if ($allarrows) {
 	$DateEntry = "DateNumEntry";
+	if ($readonly && $Tk::NumEntry::VERSION >= 2.03) {
+	    push @DateEntryArgs, -readonly => 1;
+	}
     } elsif ($has_numentryplain) {
 	$DateEntry = "DateNumEntryPlain";
     }
@@ -268,6 +275,7 @@ sub Populate {
 				     -textvariable => \$w->{Var}{$k},
 				     -frameparent => $dw,
 				     -field => $k,
+				     @DateEntryArgs,
 				    );
 			    $e_dne = $dne->Subwidget("entry") || $dne;
 			} else {
@@ -354,6 +362,7 @@ sub Populate {
 			   -textvariable => \$w->{Var}{$k},
 			   -frameparent => $tw,
 			   -field => $k,
+			   @DateEntryArgs,
 			  );
 		    } else {
 			$dne = $tw->Entry(-width => $l,
@@ -1240,6 +1249,13 @@ command. The callback is called with following arguments: date widget,
 type (either C<date> or C<time>) and increment (+1 or -1). If the
 callback returns with a false value, the increment or decrement
 command will not be executed.
+
+=item -readonly
+
+If set to a true value, then it is only possible to change the values
+by pressing the increment/decrement buttons. This option is only
+useful if C<-allarrows> is also set and if the user has
+C<Tk::NumEntry> installed on his system.
 
 =item -repeatinterval
 

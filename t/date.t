@@ -25,7 +25,7 @@ use Tk::Date;
 use strict;
 use vars qw($loaded $SLOW);
 
-BEGIN { $| = 1; $^W = 1; print "1..30\n"; }
+BEGIN { $| = 1; $^W = 1; print "1..31\n"; }
 END {print "not ok 1\n" unless $loaded;}
 $loaded = 1;
 my $ok = 1;
@@ -327,6 +327,15 @@ print (($nowstring ne $var4 ? "not " : "" . "ok ") . $ok++ . "\n");
     print "ok " . ($ok++) . "\n";
 
     if ($d->{Configure}{-monthnames}->[0] ne 'sijecanj') {
+	print "not ";
+    }
+    print "ok " . ($ok++) . "\n";
+}
+
+{
+    # test -readonly
+    my $d = $top->Date(-readonly => 1);
+    if (!$d->isa('Tk::Date')) {
 	print "not ";
     }
     print "ok " . ($ok++) . "\n";

@@ -1,5 +1,8 @@
 Revision history for Perl extension Tk::Date.
 
+0.37
+	- new -readonly option
+
 0.36
 	- just another -allarrows bugfix
 	- checks for valid mdays while inc/decrementing

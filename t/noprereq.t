@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: noprereq.t,v 1.1 2000/09/11 19:08:57 eserte Exp $
+# $Id: noprereq.t,v 1.2 2001/08/08 09:15:50 eserte Exp $
 # Author: Slaven Rezic
 #
 
@@ -23,7 +23,7 @@ BEGIN {
     }
 }
 
-BEGIN { plan tests => 5 }
+BEGIN { plan tests => 6 }
 
 # simulate not having some prereq widgets
 $Tk::Date::has_numentryplain = 0;
@@ -41,6 +41,8 @@ ok($d2->cget(-allarrows), undef);
 my $d3 = $top->Date(-monthmenu => 1)->pack;
 ok(ref $d3, "Tk::Date");
 ok(!!$d3->cget(-monthmenu), !!$Tk::VERSION >= 800.023);
+my $d4 = $top->Date(-readonly => 1)->pack;
+ok(ref $d4, "Tk::Date");
 
 #MainLoop;
 
