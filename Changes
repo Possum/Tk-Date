@@ -1,5 +1,11 @@
 Revision history for Perl extension Tk::Date.
 
+0.42
+	- missing use
+
+0.41
+	- bugfix in _Destroyed (needed for Tk804.023)
+
 0.40
 	- warning fix (thanks to Jack Dunnigan for reporting the problem)
 

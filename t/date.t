@@ -108,7 +108,7 @@ print (($delta > 2 ? "not " : "") . "ok " . $ok++ . "\n");
 
 eval { require POSIX };
 if ($@) {
-    print "ok " . $ok++ . " # skip\n";
+    print "ok " . $ok++ . " # skip POSIX required\n";
 } else {
     eval {
 	my $var3 = {};
@@ -159,8 +159,8 @@ print (($nowstring ne $var4 ? "not " : "" . "ok ") . $ok++ . "\n");
     }
     print "ok " . ($ok++) . "\n";
 
-    if ($^O ne 'freebsd') {
-	print "ok " . ($ok++) . "\n"; # skip
+    if ($^O !~ /^(freebsd|linux)$/) {
+	print "ok " . ($ok++) . " # skip Test only works on FreeBSD or Linux\n";
     } else {
 	$dw_time->get("%+"); # not supported everywhere
 	print "ok " . ($ok++) . "\n";
@@ -192,8 +192,8 @@ print (($nowstring ne $var4 ? "not " : "" . "ok ") . $ok++ . "\n");
     }
     print "ok " . ($ok++) . "\n";
 
-    if ($^O ne 'freebsd') {
-	print "ok " . ($ok++) . "\n"; # skip
+    if ($^O !~ /^(freebsd|linux)$/) {
+	print "ok " . ($ok++) . " # skip Test only works on FreeBSD or Linux\n";
     } else {
 	$dw_time->get("%+"); # not supported everywhere
 	print "ok " . ($ok++) . "\n";
@@ -275,9 +275,8 @@ print (($nowstring ne $var4 ? "not " : "" . "ok ") . $ok++ . "\n");
 	}
 	print "ok " . ($ok++) . "\n";
     } else {
-	# probably no FireButton installed
 	for (1 .. 5) {
-	    print "ok " . ($ok++) . " # skipping test\n";
+	    print "ok " . ($ok++) . " # skip Probably no Tk::FireButton installed\n";
 	}
     }
 }

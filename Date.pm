@@ -1,15 +1,15 @@
 # -*- perl -*-
 
 #
-# $Id: Date.pm,v 1.54 2002/01/10 20:52:22 eserte Exp $
+# $Id: Date.pm,v 1.57 2005/08/25 20:39:30 eserte Exp $
 # Author: Slaven Rezic
 #
-# Copyright (C) 1997, 1998, 1999, 2000, 2001 Slaven Rezic. All rights reserved.
+# Copyright (C) 1997, 1998, 1999, 2000, 2001, 2005 Slaven Rezic. All rights reserved.
 # This package is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 #
-# Mail: eserte@cs.tu-berlin.de
-# WWW:  http://user.cs.tu-berlin.de/~eserte/
+# Mail: srezic@cpan.org
+# WWW:  http://www.sourceforge.net/projects/srezic
 #
 
 package Tk::Date;
@@ -19,10 +19,11 @@ use vars qw($VERSION @ISA $has_numentryplain $has_numentry
 	    @monlen %choice $en_weekdays $en_monthnames
 	    $weekdays $monthnames
 	   );
+use Tk::Frame;
 @ISA = qw(Tk::Frame);
 Construct Tk::Widget 'Date';
 
-$VERSION = '0.40';
+$VERSION = '0.42';
 
 @monlen = (undef, 31, undef, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31);
  # XXX DST?
@@ -581,12 +582,12 @@ sub state {
     if (@_ > 1) {
 	die "Invalid state $state" if $state !~ /^(normal|disabled)$/;
 	foreach my $ww (values %{ $w->{Sub} }) {
-	    eval '$ww->configure(-state => $state);';
+	    eval '$ww->configure("-state" => $state);';
 	    #warn "$ww: $@" if $@;
 	}
-	$w->{Configure}{-state} = $state;
+	$w->{Configure}{"-state"} = $state;
     } else {
-	$w->{Configure}{-state};
+	$w->{Configure}{"-state"};
     }
 }
 
@@ -995,13 +996,18 @@ sub _end_of_day {
     timelocal(59,59,23,$l[3],$l[4],$l[5]);
 }
 
-## XXX causes segmentation fault
 sub _Destroyed {
     my $w = shift;
     if ($] >= 5.00452) {
 	my $varref = $w->{Configure}{'-variable'};
 	if (defined $varref) {
-	    untie $$varref;
+	    if (ref $varref eq 'SCALAR') {
+		untie $$varref;
+	    } elsif (ref $varref eq 'HASH') {
+		untie %$varref;
+	    } else {
+		warn "Unexpected ref type for -variable: <" . ref $varref . ">";
+	    }
 	}
     }
     $w->SUPER::DESTROY($w);

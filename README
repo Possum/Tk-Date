@@ -5,9 +5,9 @@ examples subdirectory for usage examples.
 
 To install, type
 
-	$ perl Makefile.PL
-	$ make
-	$ make install
+	perl Makefile.PL
+	make
+	make install
 
 For Windows NT and ActiveState Perl, replace "make" with "nmake", if
 you have the Visual C++ compiler available. Otherwise, just copy
@@ -22,4 +22,5 @@ Tk::Date demonstration (it's in the "User Contributed Demonstrations"
 section). The demo is also startable with "make demo" before
 installation.
 
-Send bug reports, comments and suggestions to eserte@cs.tu-berlin.de
+Send bug reports, comments and suggestions to srezic@cpan.org
+
