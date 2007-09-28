@@ -11,6 +11,9 @@ WriteMakefile
             'demos/date.pl' => ($] >= 5.005
 				? '$(INST_ARCHLIB)'
 				: '$(INST_LIB)') . '/Tk/demos/widtrib/date.pl',
+            'demos/localized_date.pl' => ($] >= 5.005
+					? '$(INST_ARCHLIB)'
+					: '$(INST_LIB)') . '/Tk/demos/widtrib/localized_date.pl',
 	   },
    'MAN3PODS' => {'Date.pm'   => '$(INST_MAN3DIR)/Tk::Date.$(MAN3EXT)',
 		 },
@@ -24,7 +27,8 @@ WriteMakefile
 sub MY::postamble {
     my $postamble = '
 demo :: pure_all
-	$(FULLPERL) -w -I$(SITELIBEXP)/Tk/demos/widget_lib -I$(SITEARCHEXP)/Tk/demos/widget_lib -Mblib demos/date.pl
+	$(FULLPERL) -w -I$(SITELIBEXP)/Tk/demos/widget_lib -I$(SITEARCHEXP)/Tk/demos/widget_lib -I$(VENDORARCHEXP)/Tk/demos/widget_lib -Mblib demos/localized_date.pl
+	$(FULLPERL) -w -I$(SITELIBEXP)/Tk/demos/widget_lib -I$(SITEARCHEXP)/Tk/demos/widget_lib -I$(VENDORARCHEXP)/Tk/demos/widget_lib -Mblib demos/date.pl
 
 ';
 

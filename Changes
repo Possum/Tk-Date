@@ -1,5 +1,12 @@
 Revision history for Perl extension Tk::Date.
 
+0.43 (not yet released)
+	- take care of encodings in localized weekdays and monthnames
+	- new demonstration showing localized dates
+	- better -readonly documentation
+	- -state also affects chooser menubutton
+	- fix for "make demo" under Debian
+
 0.42
 	- missing use
 

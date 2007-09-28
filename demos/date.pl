@@ -148,9 +148,9 @@ sub date {
        -weekdays => ['nedjelja', 'ponedjeljak', 'utorak', 'srijeda',
 		     'cetvrtak', 'petak', 'subota'],
        -monthnames =>
-       ['sijecanj', 'veljaca', 'ozujak', 'travanj',
-	'svibanj', 'lipanj', 'srpanj', 'kolovoz', 'rujan',
-	'listopad', 'studeni', 'prosinac'],
+       ["sije\x{010D}anj", "velja\x{010D}a", "o\x{017E}ujak", "travanj",
+	"svibanj", "lipanj", "srpanj", "kolovoz", "rujan",
+	"listopad", "studeni", "prosinac"],
        -monthmenu => 1,
        -incbitmap => $HINCBITMAP,
        -decbitmap => $HDECBITMAP,

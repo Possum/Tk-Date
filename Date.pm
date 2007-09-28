@@ -1,10 +1,10 @@
 # -*- perl -*-
 
 #
-# $Id: Date.pm,v 1.57 2005/08/25 20:39:30 eserte Exp $
+# $Id: Date.pm,v 1.65 2007/09/28 21:41:24 eserte Exp $
 # Author: Slaven Rezic
 #
-# Copyright (C) 1997, 1998, 1999, 2000, 2001, 2005 Slaven Rezic. All rights reserved.
+# Copyright (C) 1997, 1998, 1999, 2000, 2001, 2005, 2007 Slaven Rezic. All rights reserved.
 # This package is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 #
@@ -23,7 +23,8 @@ use Tk::Frame;
 @ISA = qw(Tk::Frame);
 Construct Tk::Widget 'Date';
 
-$VERSION = '0.42';
+$VERSION = '0.42_51';
+$VERSION = eval $VERSION;
 
 @monlen = (undef, 31, undef, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31);
  # XXX DST?
@@ -585,6 +586,10 @@ sub state {
 	    eval '$ww->configure("-state" => $state);';
 	    #warn "$ww: $@" if $@;
 	}
+	my $chooser = $w->Subwidget("chooser");
+	if (Tk::Exists($chooser)) {
+	    $chooser->configure(-state => $state);
+	}
 	$w->{Configure}{"-state"} = $state;
     } else {
 	$w->{Configure}{"-state"};
@@ -824,7 +829,7 @@ sub set_date {
 	if ($key eq 'A') {
 	    $sw->configure(-text => $value);
 	} else {
-	    my $v = sprintf("%0".$w->{'len'}{$key}."d", $value);
+	    my $v = sprintf("%0".($w->{'len'}{$key}||"")."d", $value);
 	    if ($sw->isa('Tk::Entry') ||
 		$sw->isa('Tk::NumEntry')) {
 		$sw->delete(0, 'end');
@@ -875,9 +880,10 @@ sub _get_week_days {
 	require POSIX;
 	POSIX->VERSION(1.03);
 	# prefer POSIX because of localized weekday names
+	my $locale_charset = _guess_time_locale_charset();
 	my $_weekdays = [];
 	foreach my $day_i (6 .. 12) { # 2000-08-06 till 2000-08-12
-	    my $wday = POSIX::strftime("%A", 0,0,0,$day_i,8-1,2000-1900);
+	    my $wday = _decoded_strftime("%A", [0,0,0,$day_i,8-1,2000-1900], $locale_charset);
 	    if ($wday eq '' || $wday =~ /^\?/) {
 		die "Can't get weekday name from locale";
 	    }
@@ -897,9 +903,10 @@ sub _get_month_names {
     eval {
 	require POSIX;
 	# prefer POSIX because of localized month names
+	my $locale_charset = _guess_time_locale_charset();
 	my $_monthnames = [];
 	foreach my $month_i (1 .. 12) {
-	    my $mname = POSIX::strftime("%B", 0,0,0,1,$month_i-1,1970);
+	    my $mname = _decoded_strftime("%B", [0,0,0,1,$month_i-1,1970], $locale_charset);
 	    if ($mname eq '' || $mname =~ /^\?/) {
 		die "Can't get month name from locale";
 	    }
@@ -1011,6 +1018,56 @@ sub _Destroyed {
 	}
     }
     $w->SUPER::DESTROY($w);
+}
+
+# Call only if POSIX is already loaded
+sub _guess_time_locale_charset {
+    my $charset;
+    my $locale_name = eval {
+	# Is setlocale and LC_TIME available everywhere?
+	POSIX::setlocale(POSIX::LC_TIME());
+    };
+    warn $@ if $@;
+    $locale_name =~ s{^[^.]+\.}{};
+    $locale_name =~ s{\@.*}{};
+    if ($locale_name) {
+	if      ($locale_name =~ m{^utf-?8$}i) {
+	    $charset = "utf-8";
+	} elsif ($locale_name =~ m{^iso[-_]?8859-?(\d+)$}i) {
+	    $charset = "iso-8859-$1";
+	} elsif ($locale_name =~ m{^(?:cp|ansi)-?(\d+)$}i) {
+	    $charset = "cp$1";
+	} elsif ($locale_name =~ m{^koi8-.$}i) {
+	    $charset = lc $locale_name;
+	} elsif ($locale_name =~ m{^euc-?(cn|jp|kr)$}i) {
+	    $charset = "euc-" . lc $1;
+	} elsif ($locale_name =~ m{^gb-?(\d+|k)$}i) {
+	    $charset = "gb" . lc $1;
+	} elsif ($locale_name =~ m{^big5-?hkscs$}i) {
+	    $charset = "big5-hkscs";
+	} elsif ($locale_name =~ m{^big5$}i) {
+	    $charset = "big5";
+	} elsif ($locale_name =~ m{^s(?:hift)?-?jis$}i) {
+	    $charset = "shiftjis";
+	} elsif ($locale_name =~ m{^(?:us-)?ascii$}i) {
+	    $charset = "ascii";
+	} # XXX more...
+    }
+    $charset;
+}
+
+# Call only if POSIX is already loaded
+sub _decoded_strftime {
+    my($fmt, $localtime_ref, $locale_charset) = @_;
+    my $date_string = POSIX::strftime($fmt, @$localtime_ref);
+    return $date_string if (!$locale_charset);
+    eval {
+	require Encode;
+	$date_string = Encode::decode($locale_charset, $date_string, Encode::LEAVE_SRC());
+    };
+    warn $@ if $@;
+    return $date_string;
+   
 }
 
 ######################################################################
@@ -1147,9 +1204,9 @@ the second method as B<datehash>.
 
 =head1 STANDARD OPTIONS
 
-=over 4
-
 Tk::Date descends from Frame and inherits all of its options.
+
+=over 4
 
 =item -orient
 
@@ -1169,8 +1226,8 @@ Tk-GBARR distribution are installed too.
 
 If true then all entry fields will obtain arrows. Otherwise only one
 arrow pair for each date and time will be drawn. This option can be
-set only while creating the widget. This option needs the Tk::NumEntry
-widget to be installed.
+set only while creating the widget. This option needs the
+L<Tk::NumEntry> widget to be installed.
 
 =item -bell
 
@@ -1278,10 +1335,10 @@ command will not be executed.
 
 =item -readonly
 
-If set to a true value, then it is only possible to change the values
-by pressing the increment/decrement buttons. This option is only
-useful if C<-allarrows> is also set and if the user has
-C<Tk::NumEntry> installed on his system.
+"readonly" means only that the entry fields are readonly. However, the
+user is still able to use the increment/decrement buttons to change
+the date value. Use C<< -state => "disabled" >> to make a date widget
+completely unchangable by the user.
 
 =item -repeatinterval
 
@@ -1418,8 +1475,8 @@ Slaven Rezic <eserte@cs.tu-berlin.de>
 
 =head1 COPYRIGHT
 
-Copyright (c) 1997, 1998, 1999, 2000 Slaven Rezic. All rights
-reserved. This module is free software; you can redistribute it and/or
-modify it under the same terms as Perl itself.
+Copyright (C) 1997, 1998, 1999, 2000, 2001, 2005, 2007 Slaven Rezic.
+All rights reserved. This module is free software; you can
+redistribute it and/or modify it under the same terms as Perl itself.
 
 =cut
