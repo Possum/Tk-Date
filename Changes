@@ -6,6 +6,7 @@ Revision history for Perl extension Tk::Date.
 	- better -readonly documentation
 	- -state also affects chooser menubutton
 	- fix for "make demo" under Debian
+	- fixed Bundle package name
 
 0.42
 	- missing use

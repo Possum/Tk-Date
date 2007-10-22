@@ -34,24 +34,25 @@ sub localized_date {
     $msg->update;
 
     my $row = 0;
+    my @locales = ('C');
     for my $localedir ('/usr/share/locale') {
-	my @locales = grep { -d } bsd_glob("$localedir/*");
-	for my $locale (@locales) {
-	    $locale = basename $locale;
-	    POSIX::setlocale(POSIX::LC_TIME(), $locale);
-	    my $got_locale = POSIX::setlocale(POSIX::LC_TIME());
-	    next if $locale ne $got_locale;
-	    undef $Tk::Date::weekdays;
-	    undef $Tk::Date::monthnames;
-	    $p->Label(-text => $got_locale)->grid(-row => $row, -column => 0, -sticky => 'e');
-	    $p->Date(-datefmt => "%A, %4y-%m-%2d",
-		     -fields  => 'date',
-		     -monthmenu => 1,
-		     -value   => 'now',
-		    )->grid(-row => $row, -column => 1, -sticky => 'e');
-	    $row++;
-	    #our $x;last if $x++>10;
-	}
+	push @locales, grep { -d } bsd_glob("$localedir/*");
+    }
+    for my $locale (@locales) {
+	$locale = basename $locale;
+	POSIX::setlocale(POSIX::LC_TIME(), $locale);
+	my $got_locale = POSIX::setlocale(POSIX::LC_TIME());
+	next if $locale ne $got_locale;
+	undef $Tk::Date::weekdays;
+	undef $Tk::Date::monthnames;
+	$p->Label(-text => $got_locale)->grid(-row => $row, -column => 0, -sticky => 'e');
+	$p->Date(-datefmt => "%A, %4y-%m-%2d",
+		 -fields  => 'date',
+		 -monthmenu => 1,
+		 -value   => 'now',
+		)->grid(-row => $row, -column => 1, -sticky => 'e');
+	$row++;
+	#our $x;last if $x++>10;
     }
 
     $msg->destroy;
@@ -65,6 +66,7 @@ $MW = new MainWindow;
 $MW->geometry("+0+0");
 $MW->Button(-text => 'Close',
 	    -command => sub { $MW->destroy })->pack;
+local $Tk::Date::DEBUG = 1;
 localized_date('localized_date');
 MainLoop;
 

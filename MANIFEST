@@ -1,6 +1,6 @@
 Changes
 Date.pm
-Tk-Date.pm
+TkDate.pm
 demos/date.pl
 demos/localized_date.pl
 examples/simpleclock

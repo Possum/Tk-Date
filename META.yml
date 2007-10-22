@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:                Tk-Date
-version:             0.42_51
+version:             0.42_52
 abstract:            ~
 license:             ~
 generated_by:        ExtUtils::MakeMaker version 6.36

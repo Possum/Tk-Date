@@ -1,8 +1,8 @@
 # -*- perl -*-
 
-package Bundle::Tk-Date;
+package Bundle::TkDate;
 
-$VERSION = sprintf("%d.%02d", q$Revision: 1.2 $ =~ /(\d+)\.(\d+)/);
+$VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
 
 1;
 
@@ -10,11 +10,11 @@ __END__
 
 =head1 NAME
 
-Bundle::Tk-Date - A bundle to install all dependencies of Tk-Date
+Bundle::TkDate - A bundle to install all dependencies of Tk::Date
 
 =head1 SYNOPSIS
 
- perl -MCPAN -e 'install Bundle::Tk-Date'
+ perl -MCPAN -e 'install Bundle::TkDate'
 
 =head1 CONTENTS
 

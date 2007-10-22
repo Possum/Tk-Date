@@ -1,7 +1,7 @@
 # -*- perl -*-
 
 #
-# $Id: Date.pm,v 1.65 2007/09/28 21:41:24 eserte Exp $
+# $Id: Date.pm,v 1.69 2007/09/29 16:30:29 eserte Exp $
 # Author: Slaven Rezic
 #
 # Copyright (C) 1997, 1998, 1999, 2000, 2001, 2005, 2007 Slaven Rezic. All rights reserved.
@@ -15,7 +15,7 @@
 package Tk::Date;
 use Time::Local qw(timelocal);
 use strict;
-use vars qw($VERSION @ISA $has_numentryplain $has_numentry
+use vars qw($VERSION @ISA $DEBUG $has_numentryplain $has_numentry
 	    @monlen %choice $en_weekdays $en_monthnames
 	    $weekdays $monthnames
 	   );
@@ -23,7 +23,7 @@ use Tk::Frame;
 @ISA = qw(Tk::Frame);
 Construct Tk::Widget 'Date';
 
-$VERSION = '0.42_51';
+$VERSION = '0.42_52';
 $VERSION = eval $VERSION;
 
 @monlen = (undef, 31, undef, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31);
@@ -877,6 +877,14 @@ sub _monlen {
 sub _get_week_days {
     return $weekdays if $weekdays;
     eval {
+	my $loc = _get_datetime_locale();
+	my @weekdays = @{ $loc->day_names }; # clone!
+	unshift @weekdays, pop @weekdays;
+	$weekdays = \@weekdays;
+    };
+    return $weekdays if $weekdays;
+    warn $@ if $@ && $DEBUG;
+    eval {
 	require POSIX;
 	POSIX->VERSION(1.03);
 	# prefer POSIX because of localized weekday names
@@ -891,7 +899,7 @@ sub _get_week_days {
 	}
 	$weekdays = $_weekdays;
     };
-    warn $@ if $@;
+    warn $@ if $@ && $DEBUG;
     if (!$weekdays) {
 	$weekdays = $en_weekdays;
     }
@@ -900,6 +908,13 @@ sub _get_week_days {
 
 sub _get_month_names {
     return $monthnames if $monthnames;
+    eval {
+	my $loc = _get_datetime_locale();
+	my @monthnames = @{ $loc->month_names }; # clone!
+	$monthnames = \@monthnames;
+    };
+    return $monthnames if $monthnames;
+    warn $@ if $@ && $DEBUG;
     eval {
 	require POSIX;
 	# prefer POSIX because of localized month names
@@ -1027,7 +1042,8 @@ sub _guess_time_locale_charset {
 	# Is setlocale and LC_TIME available everywhere?
 	POSIX::setlocale(POSIX::LC_TIME());
     };
-    warn $@ if $@;
+    warn $@ if $@ && $DEBUG;
+    my $full_locale_name = $locale_name;
     $locale_name =~ s{^[^.]+\.}{};
     $locale_name =~ s{\@.*}{};
     if ($locale_name) {
@@ -1041,6 +1057,10 @@ sub _guess_time_locale_charset {
 	    $charset = lc $locale_name;
 	} elsif ($locale_name =~ m{^euc-?(cn|jp|kr)$}i) {
 	    $charset = "euc-" . lc $1;
+	} elsif ($locale_name =~ m{^euc$}i && $full_locale_name =~ m{(kr|cn|jp)}i) {
+	    $charset = "euc-" . lc $1;
+	} elsif ($locale_name =~ m{^gb-?18030$}i && eval { require Encode::HanExtra; 1; }) {
+	    $charset = "gb18030";
 	} elsif ($locale_name =~ m{^gb-?(\d+|k)$}i) {
 	    $charset = "gb" . lc $1;
 	} elsif ($locale_name =~ m{^big5-?hkscs$}i) {
@@ -1051,7 +1071,18 @@ sub _guess_time_locale_charset {
 	    $charset = "shiftjis";
 	} elsif ($locale_name =~ m{^(?:us-)?ascii$}i) {
 	    $charset = "ascii";
-	} # XXX more...
+	}
+	## More encodings are missing:
+	## (Following seen on FreeBSD 6.2)
+	##   cp1131: http://source.icu-project.org/repos/icu/icu/trunk/source/data/mappings/ibm-1131_P100-1997.ucm
+	##   iscii-dev
+	##   armscii-8
+	##   pt154 (kazachstan?)
+	## (Following seen on Solaris 10)
+	##   PCK (japanese)
+	##   TIS620 (thai)
+	##   BIG5HK
+	##   zh_TW.EUC (use euc-cn?)
     }
     $charset;
 }
@@ -1065,9 +1096,17 @@ sub _decoded_strftime {
 	require Encode;
 	$date_string = Encode::decode($locale_charset, $date_string, Encode::LEAVE_SRC());
     };
-    warn $@ if $@;
+    warn $@ if $@ && $DEBUG;
     return $date_string;
    
+}
+
+sub _get_datetime_locale {
+    require DateTime::Locale;
+    require POSIX;
+    my $locale_name = POSIX::setlocale(POSIX::LC_TIME());
+    my $loc = DateTime::Locale->load($locale_name);
+    $loc;
 }
 
 ######################################################################
