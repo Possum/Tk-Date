@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: noprereq.t,v 1.3 2001/08/08 21:15:25 eserte Exp $
+# $Id: noprereq.t,v 1.4 2008/09/23 19:34:28 eserte Exp $
 # Author: Slaven Rezic
 #
 
@@ -16,10 +16,16 @@ BEGIN {
 	use Test;
 	1;
     }) {
-	print "# tests only work with installed Test module\n";
-	print "1..1\n";
-	print "ok 1\n";
-	exit;
+	print "1..0 # skip tests only work with installed Test module\n";
+	CORE::exit;
+    }
+}
+
+my $top;
+BEGIN {
+    if (!eval { $top = tkinit }) {
+	print "1..0 # skip cannot open DISPLAY\n";
+	CORE::exit;
     }
 }
 
@@ -30,8 +36,6 @@ $Tk::Date::has_numentryplain = 0;
 $Tk::Date::has_numentry      = 0;
 
 $^W = 0;
-
-my $top = new MainWindow;
 
 my $d1 = $top->Date->pack;
 ok(ref $d1, "Tk::Date");

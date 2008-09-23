@@ -25,6 +25,14 @@ use Tk::Date;
 use strict;
 use vars qw($loaded $SLOW);
 
+my $top;
+BEGIN {
+    if (!eval { $top = MainWindow->new }) {
+	print "1..0 # skip cannot open DISPLAY\n";
+	CORE::exit;
+    }
+}
+
 BEGIN { $| = 1; $^W = 1; print "1..39\n"; }
 END {print "not ok 1\n" unless $loaded;}
 $loaded = 1;
@@ -72,7 +80,6 @@ BEGIN {
 
 }
 
-my $top = new MainWindow;
 $top->geometry("+0+0");
 
 my $dw = $top->Date->pack;

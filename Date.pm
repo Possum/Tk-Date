@@ -1,10 +1,10 @@
 # -*- perl -*-
 
 #
-# $Id: Date.pm,v 1.69 2007/09/29 16:30:29 eserte Exp $
+# $Id: Date.pm,v 1.70 2008/09/23 19:28:59 eserte Exp $
 # Author: Slaven Rezic
 #
-# Copyright (C) 1997, 1998, 1999, 2000, 2001, 2005, 2007 Slaven Rezic. All rights reserved.
+# Copyright (C) 1997, 1998, 1999, 2000, 2001, 2005, 2007, 2008 Slaven Rezic. All rights reserved.
 # This package is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 #
@@ -23,7 +23,7 @@ use Tk::Frame;
 @ISA = qw(Tk::Frame);
 Construct Tk::Widget 'Date';
 
-$VERSION = '0.42_52';
+$VERSION = '0.43';
 $VERSION = eval $VERSION;
 
 @monlen = (undef, 31, undef, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31);

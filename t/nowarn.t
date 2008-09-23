@@ -2,7 +2,7 @@
 # -*- perl -*-
 
 #
-# $Id: nowarn.t,v 1.1 2002/01/10 20:51:26 eserte Exp $
+# $Id: nowarn.t,v 1.2 2008/09/23 19:33:44 eserte Exp $
 # Author: Slaven Rezic
 #
 
@@ -16,16 +16,20 @@ BEGIN {
 	use Test;
 	1;
     }) {
-	print "# tests only work with installed Test module\n";
-	print "1..1\n";
-	print "ok 1\n";
-	exit;
+	print "1..0 # skip tests only work with installed Test module\n";
+	CORE::exit;
+    }
+}
+
+my $mw;
+BEGIN {
+    if (!eval { $mw = tkinit }) {
+	print "1..0 # skip cannot open DISPLAY\n";
+	CORE::exit;
     }
 }
 
 BEGIN { plan tests => 1 }
-
-my $mw = tkinit;
 
 my $date=$mw->Date(
 	-datefmt => "%2m/%2d/%4y",

@@ -1,6 +1,6 @@
 Revision history for Perl extension Tk::Date.
 
-0.43 (not yet released)
+0.43
 	- take care of encodings in localized weekdays and monthnames
 	- new demonstration showing localized dates
 	- better -readonly documentation
