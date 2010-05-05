@@ -123,6 +123,7 @@ eval {
 ######################################################################
 
 package Tk::Date;
+use strict;
 
 sub MonthOptionmenu {
     require Tk::Optionmenu;
@@ -228,14 +229,28 @@ sub Populate {
     }
 
     # Construction of Date field
+
+    my $datefmt = delete $args->{-datefmt} || "%2d.%2m.%4y";
+
     if ($fields ne 'time') {
+	    my $dw = $w->Frame->pack(-side => 'left');
+	    $w->Advertise(dateframe => $dw);
+    }
+
+    my $use_date_entry = delete $args->{-use_date_entry};
+    if ( $fields ne 'time' and $use_date_entry ) {
+        # Can't we use standard POSIX strftime formats instead?
+        $datefmt =~ s/%4y/%Y/g;
+        $datefmt =~ s/%\d(\w)/%$1/g;
+        $args->{-datefmt} = $datefmt;
+        $w->_create_date_entry_widget( $w->Subwidget('dateframe'), $args );
+    }
+    elsif ($fields ne 'time') {
+    my $dw = $w->Subwidget('dateframe');
 	my %range = ('d' => [1, 31],
 		     'm' => [1, 12],
 		    );
-	my $dw = $w->Frame->pack(-side => 'left');
-	$w->Advertise(dateframe => $dw);
-	my @datefmt = _fmt_to_array(delete $args->{-datefmt} || "%2d.%2m.%4y");
-
+	my @datefmt = _fmt_to_array($datefmt);
 	foreach (@datefmt) {
 	    if ($_ =~ /^%(\d+)?(.)$/) {
 		my($l, $k) = ($1, $2);
@@ -303,7 +318,6 @@ sub Populate {
 			  )->pack(-side => 'left');
 	    }
 	}
-
 	if ($editable && $has_firebutton && !$allarrows) {
 	    my $f = $dw->Frame->pack(-side => 'left');
 	    my($fb1, $fb2);
@@ -490,26 +504,60 @@ sub Populate {
 				    $Tk::FireButton::HORIZDECBITMAP);
     }
 
-    $w->ConfigSpecs
-      (-repeatinterval => ['METHOD', 'repeatInterval', 'RepeatInterval', 50],
-       -repeatdelay    => ['METHOD', 'repeatDelay',    'RepeatDelay',   500],
-       -decbitmap      => ['METHOD',      'decBitmap',  'DecBitmap',
-			   $decbitmap],
-       -incbitmap      => ['METHOD',      'incBitmap',  'IncBitmap',
-			   $incbitmap],
-       -bell           => ['METHOD', 'bell', 'Bell', undef],
-       -background     => ['DESCENDANTS', 'background', 'Background', undef],
-       -foreground     => ['DESCENDANTS', 'foreground', 'Foreground', undef],
-       -precommand     => ['CALLBACK',    'preCommand', 'PreCommand', undef],
-       -command        => ['CALLBACK',    'command',    'Command',    undef],
-       -variable       => ['METHOD',      'variable',   'Variable',   undef],
-       -value          => ['METHOD',      'value',      'Value',      undef],
-       -innerbg        => ['SETMETHOD',   'innerBg', 'InnerBg',    undef],
-       -innerfg        => ['SETMETHOD',   'innerFg', 'InnerFg',    undef],
-       -state          => ['METHOD',      'state',   'State',      'normal'],
-      );
+    $w->ConfigSpecs(
+        -repeatinterval => [ 'METHOD', 'repeatInterval', 'RepeatInterval', 50 ],
+        -repeatdelay => [ 'METHOD', 'repeatDelay', 'RepeatDelay', 500 ],
+        -decbitmap   => [ 'METHOD', 'decBitmap',   'DecBitmap',   $decbitmap ],
+        -incbitmap   => [ 'METHOD', 'incBitmap',   'IncBitmap',   $incbitmap ],
+        -bell        => [ 'METHOD', 'bell',        'Bell',        undef ],
+        -background => [ 'DESCENDANTS', 'background', 'Background', undef ],
+        -foreground => [ 'DESCENDANTS', 'foreground', 'Foreground', undef ],
+        -precommand => [ 'CALLBACK',    'preCommand', 'PreCommand', undef ],
+        -command    => [ 'CALLBACK',    'command',    'Command',    undef ],
+        -variable   => [ 'METHOD',      'variable',   'Variable',   undef ],
+        -value      => [ 'METHOD',      'value',      'Value',      undef ],
+        -innerbg    => [ 'SETMETHOD',   'innerBg',    'InnerBg',    undef ],
+        -innerfg    => [ 'SETMETHOD',   'innerFg',    'InnerFg',    undef ],
+        -state      => [ 'METHOD',      'state',      'State',      'normal' ],
+        -use_date_entry =>
+            [ 'SETMETHOD', 'use_date_entry', 'UseDateEntry', undef ],
+        -date_entry_args =>
+            [ 'SETMETHOD', 'date_entry_args', 'DateEntryArgs', undef ],
+    );
 
     $w;
+}
+
+sub _create_date_entry_widget {
+    my ( $self, $parent, $args ) = @_;
+    my $datefmt    = delete $args->{-datefmt};
+    my $entry_args = delete $args->{-date_entry_args};
+    if ( not( $entry_args->{-parser} ) ) {
+        eval {
+            require POSIX;
+            require POSIX::strptime;
+            1;
+        } or die "Need POSIX and POSIX::strptime installed ($@)";
+        $entry_args->{-parsecmd} = sub {
+            my ($str) = @_;
+            my ( $sec, $min, $hour, $mday, $mon, $year, $wday, $yday )
+                = POSIX::strptime( $str, $datefmt );
+            return ( $year + 1900, $mon + 1, $mday );
+        };
+        $entry_args->{-formatcmd} = sub {
+            my ( $y, $m, $d ) = @_;
+            my ( $S, $M, $H ) = (undef) x 3;
+            $m -= 1;
+            $y -= 1900;
+            return POSIX::strftime( $datefmt, $S, $M, $H, $d, $m, $y );
+        };
+    }
+    $entry_args->{-textvariable} ||= \$self->{Var}{date_entry_textvariable};
+
+    my $entry = $parent->DateEntry(%$entry_args);
+    $entry->pack;
+    $self->Advertise( date_entry => $entry );
+    return $entry;
 }
 
 sub value {
@@ -729,6 +777,15 @@ sub get {
 sub get_date {
     my($w, $key, $defined) = @_;
     my $sw = $w->{Sub}{$key};
+    if ( $key =~ /^([ymd])$/ ) {
+        if ( my $entry = eval { $w->Subwidget('date_entry') } ) {
+            my $var   = $entry->cget('-textvariable');
+            my $parse = $entry->cget('-parsecmd')->[0];
+            my %parsed;
+            @parsed{qw(y m d)} = $parse->(${$var});
+            return $parsed{$key};
+        }
+    }
     if (Tk::Exists($sw)) {
 	if ($sw->isa('Tk::Entry') ||
 	    $sw->isa('Tk::NumEntry')) {
@@ -756,6 +813,16 @@ sub get_date {
 sub set_date {
     my($w, $key, $value, %args) = @_;
     $value = 0 if !defined $value; # XXX ???
+
+    if ( $key =~ /^[ymd]$/ and my $de = eval { $w->Subwidget('date_entry') } ) {
+        my $var_ref = $de->cget('-textvariable');
+        my $format  = $de->cget('-formatcmd');
+        my $parse   = $de->cget('-parsecmd')->[0];
+        my %keys;
+        @keys{qw(y m d)} = $parse->( ${$var_ref} );
+        $keys{$key} = $value;
+        ${$var_ref} = $_->( @keys{qw(y m d)} ) for @{$format};
+    }
 
     if ($key eq 'd') {
 	if (!$args{-correcting}) {
@@ -1319,6 +1386,14 @@ arguments: reference of date widget, field specifier, increment value.
 The field specifier is either "date" or "time" or one of "H", "M",
 "S", "d", "m", "y" for the possible time and date fields.
 
+=item -date_entry_args
+
+Hashref of args passed to the L<Tk::DateEntry> constructor when
+I<-use_date_entry> is specified.  While every effort has been made to ensure
+compatibility, some options passed this way may be incompatible.  For instance,
+no date formatting options should typically be passed this way, since Tk::Date
+will handle this.  Use I<-datefmt> instead.
+
 =item -datefmt
 
 This is a sprintf/printf-like format string for setting the order and
@@ -1411,6 +1486,13 @@ set only while creating the widget.
 Change label text for choice menu. Defaults to 'Select:'. This option
 can be set only while creating the widget.
 
+=item -use_date_entry
+
+Set to a true value (i.e., 1) and Tk::Date will use Tk::DateEntry to display the
+date portion of the widget.  This gives the user a dropdown calendar to select
+the date from.  This can only be set at construction and requires that
+L<Tk::DateEntry>, L<POSIX>, and L<POSIX::strptime> be installed.
+
 =item -value
 
 Sets an initial value for the widget. The argument may be B<unixtime>,
@@ -1472,6 +1554,14 @@ Use the datehash format instead of unixtime:
 	     -varfmt => 'datehash',
 	    )->pack;
 
+Use the DateEntry widget for the date
+
+  $top->Date(
+    -use_date_entry  => 1,
+    -date_entry_args => [ -daynames => [qw(D L Ma Me J V S) ],
+    -value           => 'now',
+  )->pack;
+
 =head1 NOTES
 
 Please note that the full set of features only available, if the
@@ -1500,13 +1590,13 @@ feature is disabled for older perl versions.
  - more interactive examples are needed for some design issues (how strong
    signal errors? ...)
  - check date-Function
- - optionally use Tk::DateEntry for the date part
  - -command is not fully implemented
 
 =head1 SEE ALSO
 
 L<Tk|Tk>, L<Tk::NumEntryPlain|Tk::NumEntryPlain>,
-L<Tk::FireButton|Tk::FireButton>, L<POSIX|POSIX>
+L<Tk::DateEntry|Tk::DateEntry>, L<Tk::FireButton|Tk::FireButton>,
+L<POSIX|POSIX>, L<POSIX::strptime|POSIX::strptime>
 
 =head1 AUTHOR
 
