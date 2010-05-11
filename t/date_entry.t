@@ -23,7 +23,7 @@ package main;
 use strict;
 use warnings;
 
-use Test::More tests => 4;
+use Test::More tests => 7;
 
 #use Tk::widgets qw(Date);
 
@@ -34,6 +34,13 @@ ok $dw;
 $dw = $top->Date( -use_date_entry => 1, -value => 'now' )->pack;
 ok $dw;
 
+sleep 1;
 my $time = time();
+ok $dw->configure( -value => $time );
+is $dw->get, $time;
+
+$dw = $top->Date( -use_date_entry => 1 )->pack;
+ok $dw;
+$time = time();
 ok $dw->configure( -value => $time );
 is $dw->get, $time;

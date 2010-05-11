@@ -542,6 +542,7 @@ sub _create_date_entry_widget {
             my ($str) = @_;
             my ( $sec, $min, $hour, $mday, $mon, $year, $wday, $yday )
                 = POSIX::strptime( $str, $datefmt );
+            $mday ||= 1;
             return ( $year + 1900, $mon + 1, $mday );
         };
         $entry_args->{-formatcmd} = sub {
