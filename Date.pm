@@ -752,17 +752,18 @@ sub get {
 	};
 	return $ret;
     } else {
+        my @time = ( @date{qw(S M H d m y)}, 0, 0, -1 );
 	my $ret;
 	my $errors = "";
 	$ret = eval {
 	    require POSIX;
-	    POSIX::strftime($fmt, @date{qw(S M H d m y)}, 0, 0, -1);
+	    POSIX::strftime($fmt, @time);
 	};
 	return $ret if (!$@);
 	$errors .= $@;
 	$ret = eval {
 	    require Date::Format;
-	    Date::Format::strftime($fmt, [@date{qw(S M H d m y)}, 0, 0, -1]);
+	    Date::Format::strftime($fmt, @time);
 	};
 	return $ret if (!$@);
 	$errors .= $@;
