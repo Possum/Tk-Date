@@ -532,19 +532,24 @@ sub _create_date_entry_widget {
     my ( $self, $parent, $args ) = @_;
     my $datefmt    = delete $args->{-datefmt};
     my $entry_args = delete $args->{-date_entry_args};
+    $self->{Var}{_parse_date} ||= sub {
+        my ($str) = @_;
+        my ( $sec, $min, $hour, $mday, $mon, $year, $wday, $yday )
+            = POSIX::strptime( $str, $datefmt );
+        $mday ||= 1;
+        return ( $year + 1900, $mon + 1, $mday );
+    };
+
     if ( not( $entry_args->{-parsecmd} ) ) {
         eval {
             require POSIX;
             require POSIX::strptime;
             1;
         } or die "Need POSIX and POSIX::strptime installed ($@)";
+
         $entry_args->{-parsecmd} = sub {
             my ($str) = @_;
-            return unless length $str;
-            my ( $sec, $min, $hour, $mday, $mon, $year, $wday, $yday )
-                = POSIX::strptime( $str, $datefmt );
-            $mday ||= 1;
-            return ( $year + 1900, $mon + 1, $mday );
+            return $self->{Var}{_parse_date}->($str) if $str;
         };
         $entry_args->{-formatcmd} = sub {
             my ( $y, $m, $d ) = @_;
@@ -783,9 +788,8 @@ sub get_date {
     if ( $key =~ /^([ymd])$/ ) {
         if ( my $entry = eval { $w->Subwidget('date_entry') } ) {
             my $var   = $entry->cget('-textvariable');
-            my $parse = $entry->cget('-parsecmd')->[0];
             my %parsed;
-            @parsed{qw(y m d)} = $parse->(${$var});
+            @parsed{qw(y m d)} = $w->{Var}{_parse_date}->( ${$var} );
             return $parsed{$key};
         }
     }
@@ -822,7 +826,7 @@ sub set_date {
         my $format  = $de->cget('-formatcmd');
         my $parse   = $de->cget('-parsecmd')->[0];
         my %keys;
-        @keys{qw(y m d)} = $parse->( ${$var_ref} );
+        @keys{qw(y m d)} = $w->{Var}{_parse_date}->( ${$var_ref} );
         $keys{$key} = $value;
         ${$var_ref} = $_->( @keys{qw(y m d)} ) for @{$format};
     }
