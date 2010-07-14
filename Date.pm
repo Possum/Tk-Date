@@ -532,7 +532,7 @@ sub _create_date_entry_widget {
     my ( $self, $parent, $args ) = @_;
     my $datefmt    = delete $args->{-datefmt};
     my $entry_args = delete $args->{-date_entry_args};
-    if ( not( $entry_args->{-parser} ) ) {
+    if ( not( $entry_args->{-parsecmd} ) ) {
         eval {
             require POSIX;
             require POSIX::strptime;
