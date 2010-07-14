@@ -540,6 +540,7 @@ sub _create_date_entry_widget {
         } or die "Need POSIX and POSIX::strptime installed ($@)";
         $entry_args->{-parsecmd} = sub {
             my ($str) = @_;
+            return unless length $str;
             my ( $sec, $min, $hour, $mday, $mon, $year, $wday, $yday )
                 = POSIX::strptime( $str, $datefmt );
             $mday ||= 1;
